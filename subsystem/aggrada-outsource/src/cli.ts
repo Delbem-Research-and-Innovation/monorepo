@@ -13,6 +13,15 @@ const [, , command, ...args] = process.argv;
     return;
   }
 
+  if (command == 'ibgeAllStates') {
+    const years = args.map((year) => {
+      return parseInt(year, 10);
+    });
+
+    await ingest.ibgeAllStates({ years });
+    return;
+  }
+
   if (command == 'osmAddress') {
     const years = args.map((year) => {
       return parseInt(year, 10);

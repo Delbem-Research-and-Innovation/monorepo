@@ -2,8 +2,8 @@
 import 'dotenv/config';
 
 import { db } from '../db';
-import { indexer } from '../';
-import { reader, transformer } from '@simple4decision/aggrada-core';
+import { indexer } from '..';
+import { reader, transformer } from '../../../aggrada-core/src';
 
 type AddressKeys = {
   streetName?: string;
@@ -25,7 +25,7 @@ const createObservation = async ({
   addressKeys,
   fixedAddressValues,
   timeKey,
-  timezone = 'America/Sao_Paulo', // Todo: get timezone from state-country
+  timezone = 'America/Sao_Paulo', // ToDo: get timezone from state-country
   data,
 }: {
   addressKeys: AddressKeys;
@@ -49,13 +49,19 @@ const createObservation = async ({
     }
   );
 
-  console.log('Init spatial index');
+  await sleep(1300);
+  const spatialId = await indexer
+    .indexSpatialFromAddress(
+      indexSpatialParams as Parameters<
+        typeof indexer.indexSpatialFromAddress
+      >[0]
+    )
+    .catch((err) => {
+      console.log('Spatial id not founded: ', err);
+      return null;
+    });
 
-  const spatialId = await indexer.indexSpatialFromAddress(
-    indexSpatialParams as Parameters<typeof indexer.indexSpatialFromAddress>[0]
-  );
-
-  if (!spatialId) {
+  if (!spatialId?.aggrada_spatials_id) {
     throw Error('Spatial id not founded');
   }
 
@@ -68,11 +74,30 @@ const createObservation = async ({
     throw Error('Time range not processed');
   }
 
-  const aggradaEntryObs = await db.AggradaObservation.create({
-    aggrada_spatial_id: spatialId,
+  const observationRecord = {
+    aggrada_spatials_id: spatialId.aggrada_spatials_id,
     temporal_range_tz: [timeRange.startTz, timeRange.endTz],
     temporal_range: [timeRange.start, timeRange.end],
     data,
+  };
+
+  /**
+   * Check if observation already exists in the database.
+   */
+  const existingObservation = await db.AggradaObservation.findOne({
+    where: observationRecord,
+  }).catch(() => {
+    return null;
+  });
+  if (existingObservation) {
+    console.log('Check if observation already exists in the database.');
+    return false;
+  }
+
+  const aggradaEntryObs = await db.AggradaObservation.create(
+    observationRecord
+  ).catch(() => {
+    return null;
   });
 
   if (!aggradaEntryObs?.dataValues) {
@@ -109,7 +134,6 @@ export const ingestFromAddress = async ({
         console.log('init batch');
 
         for (const data of batch) {
-          await sleep(1300);
           try {
             await createObservation({
               addressKeys,
@@ -117,22 +141,10 @@ export const ingestFromAddress = async ({
               timeKey,
               data,
             });
-          } catch {
-            throw Error('error creating');
-            // console.log('error creating: ', data);
+          } catch (err) {
+            console.log(`Error creating: ${err}\n`, data);
           }
         }
-
-        // await Promise.all(
-        //   batch.map(async (data) => {
-        //     await createObservation({
-        //       addressKeys,
-        //       fixedAddressValues,
-        //       timeKey,
-        //       data,
-        //     });
-        //   })
-        // );
       }
     );
   }
@@ -146,7 +158,6 @@ export const ingestFromAddress = async ({
         console.log('init batch');
 
         for (const data of batch) {
-          await sleep(1300);
           try {
             await createObservation({
               addressKeys,
@@ -154,20 +165,11 @@ export const ingestFromAddress = async ({
               timeKey,
               data,
             });
-          } catch {
-            throw Error('error creating');
-            // console.log('error creating: ', data);
+          } catch (err) {
+            console.log(`Error creating: ${err}\n`, data);
           }
         }
       }
     );
   }
 };
-
-// saveObservationData()
-// .then(() => {
-//   console.log('Ingestion process finished.');
-// })
-// .catch((error) => {
-//   console.error('Error during ingestion: ', error);
-// });

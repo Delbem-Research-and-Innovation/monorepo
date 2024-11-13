@@ -9,7 +9,7 @@ import {
 } from '@ttoss/postgresdb';
 import { CoreFile } from './CoreFile';
 import { Geometry } from 'geojson';
-import { mapper } from '@simple4decision/aggrada-core';
+import { mapper } from '../../../aggrada-core/src';
 
 // Dynamically extract the enum keys
 const adminLevels = [...Object.keys(mapper.adminLevelMap), 'unknown'];

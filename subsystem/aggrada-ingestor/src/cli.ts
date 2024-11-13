@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { reader } from '@simple4decision/aggrada-core';
+import { reader } from '../../aggrada-core/src';
 
 const [, , command, ...args] = process.argv;
 

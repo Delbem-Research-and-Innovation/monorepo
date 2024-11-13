@@ -112,6 +112,23 @@ const timeRangePatterns: Array<{
       return { originStart, originEnd: endOfDay(originStart) };
     },
   },
+  // Entry for the "MM/DD/YY" format
+  {
+    regex: /^\s*(\d{1,2})\/(\d{1,2})\/(\d{2})\s*$/, // Formato MM/DD/YY
+    parser: ([, month, day, year], originTimezone) => {
+      const fullYear = +year < 50 ? +year + 2000 : +year + 1900; // Ajusta para 2000+ para anos < 50 e 1900+ para anos >= 50
+      const originStart = new TZDate(
+        fullYear,
+        +month - 1,
+        +day,
+        originTimezone
+      );
+      return {
+        originStart,
+        originEnd: endOfDay(originStart),
+      };
+    },
+  },
   // Add a regex and parser to handle Excel Serial Date format
   {
     regex: /^\s*(\d{5})\s*$/, // Assuming 5 digits for Excel Serial Date
@@ -227,4 +244,17 @@ export const createTimeRange = ({
   }
 
   throw new Error(`Invalid input format for TimeRange: ${date}`);
+};
+
+/**
+ * Checks if the observation time range is within the aggregation range.
+ */
+export const isWithinTimeRange = ({
+  searchRange,
+  setRange,
+}: {
+  searchRange: { start: Date; end: Date };
+  setRange: { start: Date; end: Date };
+}) => {
+  return searchRange.start >= setRange.start && searchRange.end <= setRange.end;
 };

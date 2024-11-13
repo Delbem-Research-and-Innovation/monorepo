@@ -5,4 +5,5 @@ packages:
   - subsystem/postgresdb
   - subsystem/aggrada-core
   - subsystem/aggrada-outsource
-  - subsystem/aggrada-ingestion
+  - subsystem/aggrada-ingestor
+  - subsystem/aggrada-aggregator

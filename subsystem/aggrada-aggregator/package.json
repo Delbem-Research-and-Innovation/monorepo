@@ -1,0 +1,21 @@
+{
+  "name": "@simple4decision/aggrada-ingestion",
+  "version": "0.1.0",
+  "description": "",
+  "author": "enniolopes@usp.br",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@simple4decision/aggrada-core": "workspace:^",
+    "@simple4decision/postgresdb": "workspace:^",
+    "@ttoss/postgresdb": "^0.2.3",
+    "csv-stringify": "^6.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "dotenv": "^16.4.5",
+    "sequelize": "^6.37.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
