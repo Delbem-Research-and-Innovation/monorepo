@@ -6,7 +6,7 @@ import { db } from '../db';
 import { sources } from '..';
 import pLimit from 'p-limit';
 
-export const ibgeAllCities = async ({ years }: { years?: number[] }) => {
+export const ibgeAllStates = async ({ years }: { years?: number[] }) => {
   const yearsSearch =
     years ??
     Array.from({ length: new Date().getFullYear() - 2019 + 1 }, (_, i) => {
@@ -14,15 +14,15 @@ export const ibgeAllCities = async ({ years }: { years?: number[] }) => {
     });
 
   /**
-   * Get all cities from IBGE to get the maps
+   * Get all states from IBGE to get the maps
    */
-  const allCities = await sources.ibgeAllCitiesRegistry();
+  const allStates = await sources.ibgeAllStatesRegistry();
 
-  const searchParams = allCities.flatMap((city) => {
+  const searchParams = allStates.flatMap((state) => {
     return yearsSearch.map((year) => {
       return {
         year,
-        ...city,
+        ...state,
       };
     });
   });
@@ -31,8 +31,8 @@ export const ibgeAllCities = async ({ years }: { years?: number[] }) => {
     await db.AggradaSpatial.findAll({
       where: {
         geo_code: {
-          [Op.in]: allCities.map((cityRegistry) => {
-            return `${cityRegistry.id}`;
+          [Op.in]: allStates.map((stateRegistry) => {
+            return `${stateRegistry.id}`;
           }),
         },
         start_date: {
@@ -41,7 +41,7 @@ export const ibgeAllCities = async ({ years }: { years?: number[] }) => {
           }),
         },
         source: 'ibge',
-        admin_level: 'municipality',
+        admin_level: 'state',
       },
       attributes: ['geo_code'],
     })
@@ -67,9 +67,9 @@ export const ibgeAllCities = async ({ years }: { years?: number[] }) => {
     newSearchParams.map((searchParam) => {
       return limit(async () => {
         /**
-         * Get the city map polygon
+         * Get the state map polygon
          */
-        const resMap = await sources.ibgeCityMap({
+        const resMap = await sources.ibgeStateMap({
           ibgeCode: `${searchParam.id}`,
           year: searchParam.year,
         });

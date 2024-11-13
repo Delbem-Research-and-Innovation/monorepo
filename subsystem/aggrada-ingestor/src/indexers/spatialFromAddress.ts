@@ -2,8 +2,8 @@
 import 'dotenv/config';
 
 import { db } from '../db';
-import { getSpatialId } from './';
-import { sources } from '../../../aggrada-outsource/src';
+import { getSpatialId } from '.';
+import { sources } from '@simple4decision/aggrada-outsource';
 
 type PostalCodeAndNumber = {
   postalCode: string | number;
@@ -51,11 +51,12 @@ export const indexSpatialFromAddress = async (
     searchParams.city = address.city;
   }
 
+  let cepData: Awaited<ReturnType<typeof sources.cepabertoNumber>> = null;
   if ('postalCode' in address && 'streetNumber' in address) {
     searchParams.postalcode = `${address.postalCode}`.replace('-', '').trim();
 
     if (address.country && address.country.match(/^(brasil|brazil|br)$/i)) {
-      const cepData = await sources.cepabertoNumber({
+      cepData = await sources.cepabertoNumber({
         cepNumber: `${address.postalCode}`,
       });
 
@@ -90,11 +91,14 @@ export const indexSpatialFromAddress = async (
     throw Error('Insuficiet params to find address lat long');
   }
 
-  const spatialIndex = await sources.osmLatLongFromAddress({
-    fullAddress: searchParams.fullAddress,
-  });
+  const spatialIndex =
+    (await sources.osmLatLongFromAddress({
+      fullAddress: searchParams.fullAddress,
+    })) || cepData;
 
-  console.log('Init selectSpatialIndex: ', spatialIndex.geo_code);
+  if (!spatialIndex) {
+    throw Error('Unable to fetch for latitude and longitude from data');
+  }
 
   /**
    * Check if index already exists
@@ -103,10 +107,9 @@ export const indexSpatialFromAddress = async (
     geo_code: spatialIndex.geo_code,
     source: spatialIndex.source,
     admin_level: spatialIndex.admin_level,
-    start_date: spatialIndex.start_date,
-  }).catch(undefined);
-
-  console.log('selectSpatialIndex completed: ', selectSpatialIndex);
+  }).catch(() => {
+    return null;
+  });
 
   if (selectSpatialIndex) {
     return {

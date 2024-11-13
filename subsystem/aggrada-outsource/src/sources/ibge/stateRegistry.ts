@@ -2,7 +2,7 @@ import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
 
 const IBGE_API_LOCALIDADES_URL =
-  'https://servicodados.ibge.gov.br/api/v1/localidades/municipios';
+  'https://servicodados.ibge.gov.br/api/v1/localidades/estados';
 
 type IBGERegistry = {
   id: number;
@@ -10,7 +10,7 @@ type IBGERegistry = {
   [key: string]: string | number | IBGERegistry;
 };
 
-export const ibgeCityRegistry = async ({
+export const ibgeStateRegistry = async ({
   ibgeCode,
 }: {
   ibgeCode: string;
@@ -23,10 +23,10 @@ export const ibgeCityRegistry = async ({
     }) as IBGERegistry;
   }
 
-  throw new Error(`Error: data not founded for IBGE city code ${ibgeCode}`);
+  throw new Error(`Error: data not founded for IBGE state code ${ibgeCode}`);
 };
 
-export const ibgeAllCitiesRegistry = async (): Promise<IBGERegistry[]> => {
+export const ibgeAllStatesRegistry = async (): Promise<IBGERegistry[]> => {
   let tries = 0;
   while (tries < 5) {
     const response = await axios.get(IBGE_API_LOCALIDADES_URL);

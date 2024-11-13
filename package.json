@@ -7,21 +7,18 @@
     "preinstall": "npx only-allow pnpm",
     "lint": "lint-staged --diff main --quiet",
     "ls": "lerna ls",
-    "prepare": "husky || true",
-    "syncpack:fix": "syncpack fix-mismatches",
-    "syncpack:list": "syncpack list-mismatches"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.3.0",
-    "@ttoss/config": "^1.32.10",
-    "@ttoss/eslint-config": "^1.24.8",
+    "@ttoss/config": "^1.34.1",
+    "@ttoss/eslint-config": "^1.24.9",
     "eslint": "^8.57.0",
-    "husky": "^9.1.4",
+    "husky": "^9.1.5",
     "lint-staged": "15.2.5",
     "prettier": "^3.3.3",
-    "syncpack": "^12.4.0",
-    "turbo": "^2.1.2",
-    "typescript": "^5.6.2"
+    "turbo": "^2.2.3",
+    "typescript": "^5.6.3"
   },
   "keywords": [],
   "engines": {

@@ -4,7 +4,7 @@
  * It maps administrative regions to numeric levels, where lower numbers
  * represent higher administrative levels.
  */
-export const adminLevelMap: { [key: string]: number } = {
+export const adminLevelMap = {
   country: 2, // Represents the national level
   state: 4, // State or province, depending on the country
   province: 4, // Province, used in certain countries
@@ -20,6 +20,6 @@ export const adminLevelMap: { [key: string]: number } = {
   subdistrict: 10, // Subdivision of a district
   block: 11, // City block or urban division
   street: 11, // Street or road
-  address: 13, // Specific location, not necessarily tied to formal administrative divisions
-  latlong: 13, // Specific location, not necessarily tied to formal administrative divisions
+  address: 13, // Completed address of an specific location, a point in the map
+  latlong: 13, // Latitude and longitude
 };

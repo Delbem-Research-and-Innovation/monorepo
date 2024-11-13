@@ -2,7 +2,7 @@
 /* eslint-disable no-console */
 import { Point } from 'geojson';
 import { Spatial } from '../../Models';
-import { transformer } from '@simple4decision/aggrada-core';
+import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
 
 interface NominatimParams {
@@ -83,7 +83,7 @@ export const osmLatLongFromAddress = async ({
   country?: string; // Country name
   postalcode?: string;
   countrycodes?: string; // ISO 3166-1 alpha-2 country codes (e.g., BR, US)
-}): Promise<Spatial> => {
+}): Promise<Spatial | null> => {
   const params: Partial<Record<keyof NominatimParams, string>> = {
     q: fullAddress,
     format: 'json',
@@ -137,7 +137,7 @@ export const osmLatLongFromAddress = async ({
 
       return {
         geo_code: `${point.coordinates[0]}#${point.coordinates[1]}`,
-        admin_level: 13,
+        admin_level: 'latlong',
         source: 'openstreetmap',
         start_date: new Date(1900, 0, 1),
         properties: {
@@ -148,7 +148,7 @@ export const osmLatLongFromAddress = async ({
         raw_srid: '4326',
       };
     }
-    throw Error;
+    return null;
   } catch (error) {
     console.error(
       'Error fetching geolocation from osmLatLongFromAddress:',

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { Point } from 'geojson';
 import { Spatial } from '../../Models';
-import { transformer } from '@simple4decision/aggrada-core';
+import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
 
 // API Doc: https://www.cepaberto.com
@@ -71,7 +71,7 @@ export const cepabertoNumber = async ({
 
   return {
     geo_code: `${result.data.latitude}#${result.data.longitude}`,
-    admin_level: 'location',
+    admin_level: 'latlong',
     source: 'cepaberto',
     start_date: new Date(1900, 0, 1),
     properties: {
@@ -138,7 +138,7 @@ export const cepabertoAddress = async ({
 
   return {
     geo_code: `${result?.data?.cep}`,
-    admin_level: 'location',
+    admin_level: 'latlong',
     source: 'cepaberto',
     start_date: new Date(1900, 0, 1),
     properties: {
