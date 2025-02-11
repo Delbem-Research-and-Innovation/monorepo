@@ -6,6 +6,7 @@ import {
   Model,
   Table,
 } from '@ttoss/postgresdb';
+
 import { CoreFileCollection } from './CoreFileCollection';
 import { CoreUser } from './CoreUser';
 

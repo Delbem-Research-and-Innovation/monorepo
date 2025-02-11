@@ -1,4 +1,3 @@
-import { AggradaSpatial } from './AggradaSpatial';
 import {
   BelongsTo,
   Column,
@@ -7,6 +6,8 @@ import {
   Model,
   Table,
 } from '@ttoss/postgresdb';
+
+import { AggradaSpatial } from './AggradaSpatial';
 import { CoreFile } from './CoreFile';
 
 @Table({

@@ -6,6 +6,7 @@ import {
   format,
   startOfWeek,
 } from 'date-fns';
+
 import { timeGranularity } from '../mappers';
 
 /**

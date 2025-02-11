@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
 
-import { db } from '../db';
-import { indexer } from '..';
 import { reader, transformer } from '../../../aggrada-core/src';
+import { indexer } from '..';
+import { db } from '../db';
 
 type AddressKeys = {
   streetName?: string;

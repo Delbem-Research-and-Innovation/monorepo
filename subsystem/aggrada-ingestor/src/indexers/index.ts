@@ -1,2 +1,2 @@
-export { getSpatialId } from './spatialId';
 export { indexSpatialFromAddress } from './spatialFromAddress';
+export { getSpatialId } from './spatialId';

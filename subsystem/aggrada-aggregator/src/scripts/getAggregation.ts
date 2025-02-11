@@ -1,7 +1,8 @@
+import { mapper, transformer } from '@simple4decision/aggrada-core';
 import { Op } from 'sequelize';
+
 import { db } from '../db';
 import { fetchObservations } from './fetchObservations';
-import { mapper, transformer } from '@simple4decision/aggrada-core';
 // import { getJsonbKeys } from './getJsonbKeys';
 
 // Type definition for aggregated data entry at each space-time key

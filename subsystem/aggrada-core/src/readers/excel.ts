@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fs from 'fs';
 import xlsx from 'xlsx';
 
@@ -87,13 +86,13 @@ export const excelPreview = async ({
 
       const fileBuffer = fs.readFileSync(file);
       workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-    } catch (error) {
+    } catch {
       throw new Error('Failed to calculate file size or read Excel file.');
     }
   } else if (Buffer.isBuffer(file)) {
     try {
       workbook = xlsx.read(file, { type: 'buffer' });
-    } catch (error) {
+    } catch {
       throw new Error('Failed to read Excel buffer.');
     }
   } else {

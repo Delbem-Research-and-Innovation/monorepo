@@ -14,7 +14,7 @@ RUN pnpm run build
 
 FROM base AS prod
 WORKDIR /api/subsystem/api
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /api
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /api/
 COPY --from=build /api/subsystem/api/package.json /api/subsystem/api/package.json
 COPY --from=build /api/subsystem/api/dist /api/subsystem/api/dist
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --prod

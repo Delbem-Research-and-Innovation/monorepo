@@ -1,4 +1,3 @@
-import { AggradaObservation } from './AggradaObservation';
 import {
   BelongsTo,
   Column,
@@ -8,6 +7,8 @@ import {
   Model,
   Table,
 } from '@ttoss/postgresdb';
+
+import { AggradaObservation } from './AggradaObservation';
 import { CoreFileCollection } from './CoreFileCollection';
 
 @Table

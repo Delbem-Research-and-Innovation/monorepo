@@ -1,4 +1,5 @@
 import { Column, DataType, ForeignKey, Model, Table } from '@ttoss/postgresdb';
+
 import { CoreUser } from './CoreUser';
 
 const logLevels = ['INFO', 'WARN', 'ERROR', 'DEBUG', 'TRACE'] as const;

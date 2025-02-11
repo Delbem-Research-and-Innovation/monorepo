@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { QueryTypes } from 'sequelize';
+
 import { db } from '../db';
 
 export const getJsonbKeys = async ({
