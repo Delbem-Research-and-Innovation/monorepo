@@ -1,4 +1,5 @@
 import { Column, DataType, HasMany, Model, Table } from '@ttoss/postgresdb';
+
 import { CoreFileCollectionUser } from './CoreFileCollectionUser';
 import { CoreLog } from './CoreLog';
 

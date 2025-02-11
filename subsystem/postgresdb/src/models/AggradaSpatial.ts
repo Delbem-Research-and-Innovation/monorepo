@@ -1,4 +1,3 @@
-import { AggradaObservation } from './AggradaObservation';
 import {
   Column,
   DataType,
@@ -7,9 +6,11 @@ import {
   Model,
   Table,
 } from '@ttoss/postgresdb';
-import { CoreFile } from './CoreFile';
 import { Geometry } from 'geojson';
+
 import { mapper } from '../../../aggrada-core/src';
+import { AggradaObservation } from './AggradaObservation';
+import { CoreFile } from './CoreFile';
 
 // Dynamically extract the enum keys
 const adminLevels = [...Object.keys(mapper.adminLevelMap), 'unknown'];

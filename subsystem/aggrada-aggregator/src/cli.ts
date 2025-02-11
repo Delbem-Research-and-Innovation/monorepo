@@ -2,8 +2,8 @@
 import 'dotenv/config';
 
 import { db } from './db';
-import { getAggregation } from './scripts/getAggregation';
 import { writeCsv } from './scripts/exportToCSV';
+import { getAggregation } from './scripts/getAggregation';
 // import { asyncIterableFromArray } from './scripts/asyncIterable';
 
 const spatialRecord = await db.AggradaSpatial.findOne({

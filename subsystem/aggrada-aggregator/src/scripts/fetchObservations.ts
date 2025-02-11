@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { Op } from 'sequelize';
+
 import { db } from '../db';
 
 /**

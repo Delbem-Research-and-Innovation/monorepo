@@ -1,5 +1,6 @@
-import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
+
+import { transformer } from '../../../../aggrada-core/src';
 
 const IBGE_API_LOCALIDADES_URL =
   'https://servicodados.ibge.gov.br/api/v1/localidades/municipios';

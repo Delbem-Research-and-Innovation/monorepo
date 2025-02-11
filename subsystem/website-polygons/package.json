@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "@simple4decision/website-polygons",
+  "version": "0.1.0",
+  "scripts": {
+    "generate-polygons": "tsx src/generatePolygons.ts"
+  },
+  "dependencies": {
+    "@tmcw/togeojson": "^5.8.1",
+    "@types/node": "^20",
+    "tsx": "^4.19.1",
+    "xmldom": "^0.6.0"
+  }
+}

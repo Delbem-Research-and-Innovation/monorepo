@@ -1,10 +1,11 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
 
-import { Op } from 'sequelize';
-import { db } from '../db';
-import { sources } from '..';
 import pLimit from 'p-limit';
+import { Op } from 'sequelize';
+
+import { sources } from '..';
+import { db } from '../db';
 
 export const ibgeAllStates = async ({ years }: { years?: number[] }) => {
   const yearsSearch =

@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
-import { Point } from 'geojson';
-import { Spatial } from '../../Models';
-import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
+import { Point } from 'geojson';
+
+import { transformer } from '../../../../aggrada-core/src';
+import { Spatial } from '../../Models';
 
 interface NominatimParams {
   q: string; // Free text search query (required)

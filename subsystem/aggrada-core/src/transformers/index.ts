@@ -1,4 +1,4 @@
-export * from './timeRange';
-export * from './multipolygon';
 export * from './flattenObject';
+export * from './multipolygon';
 export * from './timeIntervals';
+export * from './timeRange';

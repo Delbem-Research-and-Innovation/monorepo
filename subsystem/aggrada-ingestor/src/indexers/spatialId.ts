@@ -1,5 +1,6 @@
-import { db } from '../db';
 import { models } from '@simple4decision/postgresdb';
+
+import { db } from '../db';
 
 /**
  * Spatial Indexer - Automatically indexes spatial references for heterogeneous observations.

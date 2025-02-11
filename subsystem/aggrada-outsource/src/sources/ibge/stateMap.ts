@@ -1,6 +1,7 @@
+import axios from 'axios';
+
 import { Spatial } from '../../Models';
 import { ibgeStateRegistry } from './stateRegistry';
-import axios from 'axios';
 
 const IBGE_API_MALHAS_URL =
   'https://servicodados.ibge.gov.br/api/v3/malhas/estados';

@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
-import { Point } from 'geojson';
-import { Spatial } from '../../Models';
-import { transformer } from '../../../../aggrada-core/src';
 import axios from 'axios';
+import { Point } from 'geojson';
+
+import { transformer } from '../../../../aggrada-core/src';
+import { Spatial } from '../../Models';
 
 // API Doc: https://www.cepaberto.com
 const API_TOKEN = '8cbac120c4ead2039aae60a0f41a8080'; // enniolopes@usp.br

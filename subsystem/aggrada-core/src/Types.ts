@@ -1,4 +1,5 @@
 import { Geometry } from 'geojson';
+
 import { mapper } from '.';
 
 export type SpatialCore = {

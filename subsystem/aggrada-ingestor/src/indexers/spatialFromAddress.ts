@@ -1,9 +1,10 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
 
+import { sources } from '@simple4decision/aggrada-outsource';
+
 import { db } from '../db';
 import { getSpatialId } from '.';
-import { sources } from '@simple4decision/aggrada-outsource';
 
 type PostalCodeAndNumber = {
   postalCode: string | number;

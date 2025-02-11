@@ -125,6 +125,7 @@ uploads/
 **/__generated__/
 yarn.lock
 **/pnpm-lock.yaml
+!pnpm-lock.yaml
 
 # i18n compiled files
 **/i18n/compiled
