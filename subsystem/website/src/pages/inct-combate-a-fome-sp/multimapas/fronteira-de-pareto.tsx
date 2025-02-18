@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as googleapis from 'googleapis';
 import {
+  Box,
   Flex,
   Grid,
   Heading,
@@ -275,48 +276,55 @@ const Selector = (
   );
 };
 
-const MapCaption = ({ captions }: { captions: Captions }) => {
+const MapCaption = ({ captions }: { captions: Captions | Record<string, { value: number; name: string; fillColor: string; }> }) => {
   return (
-    <Stack
-      sx={{
-        gap: '2',
-        padding: '4',
-        backgroundColor: 'white',
-      }}
-    >
-      <Text sx={{ fontWeight: 'bold' }}>Legenda</Text>
-      <Stack
-        sx={{
-          gap: '1',
-        }}
-      >
-        {captions.map((caption) => {
-          return (
-            <Flex
-              key={caption.name}
-              sx={{
-                gap: '1',
-              }}
-            >
-              <div
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: caption.fillColor,
-                }}
-              />
-              <Text
-                sx={{
-                  fontSize: 'sm',
-                }}
-              >
+    <Flex sx={{
+      gap: '2',
+      padding: '4',
+      backgroundColor: 'white',
+    }}>
+      Legenda
+      <Flex sx={{
+        gap: '1',
+        flexDirection: 'column',
+      }}>
+        {Array.isArray(captions) ? (
+          captions.map((caption) => (
+            <Flex key={caption.name} sx={{
+              gap: '1',
+            }}>
+              <Box style={{
+                width: '20px',
+                height: '20px',
+                backgroundColor: caption.fillColor,
+              }} />
+              <Text sx={{
+                fontSize: 'sm',
+              }}>
                 {caption.name}
               </Text>
             </Flex>
-          );
-        })}
-      </Stack>
-    </Stack>
+          ))
+        ) : (
+          Object.values(captions).map((caption) => (
+            <Flex key={caption.name} sx={{
+              gap: '1',
+            }}>
+              <Box style={{
+                width: '20px',
+                height: '20px',
+                backgroundColor: caption.fillColor,
+              }} />
+              <Text sx={{
+                fontSize: 'sm',
+              }}>
+                {caption.name}
+              </Text>
+            </Flex>
+          ))
+        )}
+      </Flex>
+    </Flex>
   );
 };
 
@@ -584,7 +592,13 @@ const Map = ({
           right: 0,
         }}
       >
-        <MapCaption captions={indicatorData.captions} />
+        <MapCaption
+          captions={
+            Array.isArray(indicatorData.captions)
+              ? indicatorData.captions
+              : Object.values(indicatorData.captions)
+          }
+        />
       </Flex>
     </Flex>
   );
