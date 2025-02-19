@@ -1,9 +1,11 @@
+import fs from 'node:fs';
+
+import { parse } from 'csv-parse';
+import { projects } from 'src/projects';
+
 import { getAllIncomeTypes } from './getAllIncomeTypes';
 import { getCSVFileDir } from './getCSVFiles';
 import { getIncomeTypeVariables } from './getIncomeTypeVariables';
-import { parse } from 'csv-parse';
-import { projects } from 'src/projects';
-import fs from 'node:fs';
 
 const project = projects.find((project) => {
   return project.slug === 'inct-combate-a-fome-sp';

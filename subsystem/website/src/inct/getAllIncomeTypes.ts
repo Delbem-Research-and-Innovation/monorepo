@@ -1,6 +1,8 @@
-import { getCSVFilesDir } from './getCSVFiles';
-import { projects } from 'src/projects';
 import fs from 'node:fs';
+
+import { projects } from 'src/projects';
+
+import { getCSVFilesDir } from './getCSVFiles';
 
 const project = projects.find((project) => {
   return project.slug === 'inct-combate-a-fome-sp';

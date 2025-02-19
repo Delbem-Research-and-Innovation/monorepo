@@ -1,4 +1,5 @@
-import * as React from 'react';
+import { useGoogleMaps, useMap } from '@ttoss/google-maps';
+import { Icon } from '@ttoss/react-icons';
 import {
   Flex,
   Heading,
@@ -11,15 +12,14 @@ import {
   Text,
 } from '@ttoss/ui';
 import { GetStaticPaths, InferGetStaticPropsType } from 'next';
-import { Icon } from '@ttoss/react-icons';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import * as React from 'react';
 import { getAllIncomeTypes } from 'src/inct/getAllIncomeTypes';
 import { getIncomeTypeVariables } from 'src/inct/getIncomeTypeVariables';
 import { getNumberOfPeoplePerCity } from 'src/inct/getNumberOfPeoplePerCity';
 import { getPolygonsOptions } from 'src/inct/getPolygonsOptions';
-import { useGoogleMaps, useMap } from '@ttoss/google-maps';
-import { useRouter } from 'next/router';
 import { variablesDictionary } from 'src/inct/variablesDictionary';
-import Link from 'next/link';
 
 const polygonsCommonOptions: Record<string, google.maps.PolygonOptions> = {
   selected: {

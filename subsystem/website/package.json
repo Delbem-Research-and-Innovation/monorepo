@@ -20,6 +20,7 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@ttoss/eslint-config": "^1.26.0",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^20",
     "@types/react": "^19",
