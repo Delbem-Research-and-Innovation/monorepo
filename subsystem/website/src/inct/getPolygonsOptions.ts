@@ -38,28 +38,35 @@ export type PolygonsOptions = Record<
  * @param data Array of number to create frequency table
  * @param classQty Number of classes to create frequency table
  */
-  const getFrequencyTable = async ({
-    data,
-    classQty = 4,
-  }: {
-    data: number[];
-    classQty?: number;
-  }) => {
-    const dataTreat: number[] = data.reduce((acc, cur) => {
-      if (!cur || isNaN(+cur) || +cur == 0) {
-        return acc;
-      }
-      return [...acc, +cur];
-    }, [] as number[]);
-  
-    if (dataTreat.length <= classQty) {
-      return [0, ...dataTreat.sort((a, b) => a - b)];
+const getFrequencyTable = async ({
+  data,
+  classQty = 4,
+}: {
+  data: number[];
+  classQty?: number;
+}) => {
+  const dataTreat: number[] = data.reduce((acc, cur) => {
+    if (!cur || isNaN(+cur) || +cur == 0) {
+      return acc;
     }
-  
-    const freqMethod = await jenksBuckets(dataTreat, classQty); 
-    freqMethod.splice(0, 1); 
-    return Array.from(new Set([0, ...freqMethod])).sort((a, b) => a - b); 
-  };
+    return [...acc, +cur];
+  }, [] as number[]);
+
+  if (dataTreat.length <= classQty) {
+    return [
+      0,
+      ...dataTreat.sort((a, b) => {
+        return a - b;
+      }),
+    ];
+  }
+
+  const freqMethod = await jenksBuckets(dataTreat, classQty);
+  freqMethod.splice(0, 1);
+  return Array.from(new Set([0, ...freqMethod])).sort((a, b) => {
+    return a - b;
+  });
+};
 
 export const getPolygonsOptions = async ({
   incomeType,
@@ -201,8 +208,11 @@ export const getPolygonsOptionsForNumericValues = async (
     data: values,
   });
 
-  const captions: Record<number, { value: number; name: string; fillColor: string }> = 
-    frequencyTable.reduce((acc, bucket, index) => {
+  const captions: Record<
+    number,
+    { value: number; name: string; fillColor: string }
+  > = frequencyTable.reduce(
+    (acc, bucket, index) => {
       if (index === 0) {
         acc[bucket] = {
           value: bucket,
@@ -218,24 +228,43 @@ export const getPolygonsOptionsForNumericValues = async (
         };
       }
       return acc;
-    }, {} as Record<number, { value: number; name: string; fillColor: string }>); 
+    },
+    {} as Record<number, { value: number; name: string; fillColor: string }>
+  );
 
-  const options: Record<string, { fillColor: string; value: number; caption: typeof captions[keyof typeof captions] }> = 
-    Object.entries(valuesObj).reduce(
-      (acc, [key, value]) => {
-        const valueAsNumber = Number(value);
-        const caption = captions[valueAsNumber] || { fillColor: 'transparent', value: 0, name: '' }; 
+  const options: Record<
+    string,
+    {
+      fillColor: string;
+      value: number;
+      caption: (typeof captions)[keyof typeof captions];
+    }
+  > = Object.entries(valuesObj).reduce(
+    (acc, [key, value]) => {
+      const valueAsNumber = Number(value);
+      const caption = captions[valueAsNumber] || {
+        fillColor: 'transparent',
+        value: 0,
+        name: '',
+      };
 
-        acc[key] = {
-          fillColor: caption.fillColor || 'transparent',
-          value: valueAsNumber,
-          caption,
-        };
+      acc[key] = {
+        fillColor: caption.fillColor || 'transparent',
+        value: valueAsNumber,
+        caption,
+      };
 
-        return acc;
-      },
-      {} as Record<string, { fillColor: string; value: number; caption: typeof captions[keyof typeof captions] }>
-    );
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        fillColor: string;
+        value: number;
+        caption: (typeof captions)[keyof typeof captions];
+      }
+    >
+  );
 
   return { captions, options };
 };

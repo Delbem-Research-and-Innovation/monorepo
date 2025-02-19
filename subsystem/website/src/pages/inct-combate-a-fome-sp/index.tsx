@@ -1,7 +1,7 @@
 import { Heading, Stack } from '@ttoss/ui';
 import { InferGetStaticPropsType } from 'next';
-import { getAllIncomeTypes } from 'src/inct/getAllIncomeTypes';
 import Link from 'next/link';
+import { getAllIncomeTypes } from 'src/inct/getAllIncomeTypes';
 
 export const getStaticProps = async () => {
   const incomeTypes = await getAllIncomeTypes();
@@ -15,11 +15,9 @@ const IncomeList = ({ incomeTypes }: Props) => {
     <Stack sx={{ gap: '8' }}>
       <Heading as="h2">Tipos de renda</Heading>
       <Stack sx={{ gap: '2' }}>
-        <Link href="/inct-combate-a-fome-sp/multimapas/fronteira-de-pareto">
-          Fronteira de Pareto
-        </Link>
+        <Link href="/inct-combate-a-fome-sp/multimapas">Multimapas</Link>
         {incomeTypes.map((incomeType) => {
-          const href = `/inct-combate-a-fome-sp/multimapas/${incomeType.slug}`;
+          const href = `/inct-combate-a-fome-sp/${incomeType.slug}`;
           return (
             <Link key={href} href={href}>
               {incomeType.slug}
