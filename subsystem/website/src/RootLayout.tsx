@@ -1,5 +1,5 @@
-import * as React from 'react';
 import { Flex, Stack, Text } from '@ttoss/ui';
+import * as React from 'react';
 
 export const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (

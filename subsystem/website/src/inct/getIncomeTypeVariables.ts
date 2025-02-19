@@ -1,8 +1,10 @@
+import fs from 'node:fs';
+
+import { parse } from 'csv-parse';
+
 import { getAllIncomeTypes } from './getAllIncomeTypes';
 import { getCSVFileDir } from './getCSVFiles';
-import { parse } from 'csv-parse';
 import { variablesDictionary } from './variablesDictionary';
-import fs from 'node:fs';
 
 const allowedVariables = Object.keys(variablesDictionary);
 

@@ -1,6 +1,8 @@
-import { getCSVFileDir } from './getCSVFiles';
-import { parse } from 'csv-parse';
 import fs from 'node:fs';
+
+import { parse } from 'csv-parse';
+
+import { getCSVFileDir } from './getCSVFiles';
 
 export const getNumberOfPeoplePerCity = async () => {
   const values: Record<string, number> = {};
