@@ -372,9 +372,9 @@ const Map = (props: {
       geoJson.addGeoJson(geoJsonData[props.region.mapConfig.geoJsonUrl], null);
 
       geoJson.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
-        const code = event.feature.getProperty(
-          props.region.mapConfig.geoJsonKey
-        ) as string;
+        const code = String(
+          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
+        );
 
         setTemporaryLocationCode(code);
 
@@ -384,9 +384,9 @@ const Map = (props: {
       geoJson.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
         setTemporaryLocationCode('');
 
-        const code = event.feature.getProperty(
-          props.region.mapConfig.geoJsonKey
-        ) as string;
+        const code = String(
+          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
+        );
 
         if (code !== props.selectedLocationCode) {
           geoJson.overrideStyle(event.feature, { strokeWeight: 1 });
@@ -394,11 +394,11 @@ const Map = (props: {
       });
 
       geoJson.addListener('click', (event: google.maps.Data.MouseEvent) => {
-        const code = event.feature.getProperty(
-          props.region.mapConfig.geoJsonKey
-        ) as string;
+        const code = String(
+          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
+        );
 
-        props.setLocationCode(code);
+        props.setLocationCode(String(code));
       });
 
       geoJson.addListener('rightclick', () => {
@@ -406,9 +406,9 @@ const Map = (props: {
       });
 
       geoJson.forEach((feature) => {
-        const code = feature.getProperty(
-          props.region.mapConfig.geoJsonKey
-        ) as string;
+        const code = String(
+          feature.getProperty(props.region.mapConfig.geoJsonKey)
+        );
 
         const options = props.variable.polygonsOptions[code];
 
@@ -420,7 +420,7 @@ const Map = (props: {
   }, [map, google, geoJsonData, props]);
 
   const selectedLocation = props.region.locations.find((l) => {
-    return l.code === props.selectedLocationCode;
+    return String(l.code) === props.selectedLocationCode;
   });
 
   /**
@@ -430,7 +430,7 @@ const Map = (props: {
     if (selectedLocation) {
       currentGeoJson.current?.forEach((feature) => {
         if (
-          feature.getProperty(props.region.mapConfig.geoJsonKey) ===
+          String(feature.getProperty(props.region.mapConfig.geoJsonKey)) ===
           props.selectedLocationCode
         ) {
           currentGeoJson.current?.overrideStyle(feature, { strokeWeight: 5 });
