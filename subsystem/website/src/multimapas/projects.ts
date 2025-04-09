@@ -61,9 +61,25 @@ export type Region = {
   locations: Location[];
 };
 
+export type Dictionary = Record<
+  string,
+  {
+    variable: string;
+    description: string;
+    captions: Record<string, string>;
+  }
+>;
+
 export type Project = {
   id: string;
   name: string;
+  ai: {
+    model: string;
+    temperature: number;
+    instructions: string;
+    input: string;
+  } | null;
+  dictionary: Dictionary | null;
   regions: Region[];
 };
 
@@ -87,6 +103,35 @@ export const getProjectByName = async (
     folderId: project.id,
   });
 
+  const getAIConfig = async () => {
+    const aiSheet = projectSheets.find((sheet) => {
+      return sheet.name === 'AI';
+    });
+
+    if (!aiSheet) {
+      return undefined;
+    }
+
+    const sheetValues = await sheets.spreadsheets.values.get({
+      auth,
+      spreadsheetId: aiSheet.id,
+      range: 'A:B',
+    });
+
+    if (!sheetValues.data.values) {
+      return undefined;
+    }
+
+    return {
+      model: sheetValues.data.values[0][1],
+      temperature: Number(sheetValues.data.values[1][1]),
+      instructions: sheetValues.data.values[2][1],
+      input: sheetValues.data.values[3][1],
+    };
+  };
+
+  const ai = (await getAIConfig()) || null;
+
   const getDictionary = async () => {
     const projectDictionarySheet = projectSheets.find((sheet) => {
       return sheet.name === 'Dicionário';
@@ -99,7 +144,7 @@ export const getProjectByName = async (
     const projectDictionarySheetValues = await sheets.spreadsheets.values.get({
       auth,
       spreadsheetId: projectDictionarySheet.id,
-      range: 'A:C',
+      range: 'A:D',
     });
 
     if (!projectDictionarySheetValues.data.values) {
@@ -108,32 +153,36 @@ export const getProjectByName = async (
 
     const { dictionary } = projectDictionarySheetValues.data.values.reduce(
       (acc, row) => {
-        const [variable, code, caption] = row;
+        const [variable, description, code, caption] = row;
 
         if (variable) {
           acc.currentVariable = variable;
         }
 
         if (!acc.dictionary[acc.currentVariable]) {
-          acc.dictionary[acc.currentVariable] = {};
+          acc.dictionary[acc.currentVariable] = {
+            variable: acc.currentVariable,
+            description: description || '',
+            captions: {},
+          };
         }
 
         if (code && caption) {
-          acc.dictionary[acc.currentVariable][code] = caption;
+          acc.dictionary[acc.currentVariable].captions[code] = caption;
         }
 
         return acc;
       },
       {
         currentVariable: '',
-        dictionary: {} as Record<string, Record<string, string>>,
+        dictionary: {} as Dictionary,
       }
     );
 
     return dictionary;
   };
 
-  const dictionary = await getDictionary();
+  const dictionary = (await getDictionary()) || null;
 
   const projectDataSheet = projectSheets.find((sheet) => {
     return sheet.name === 'Dados';
@@ -199,7 +248,10 @@ export const getProjectByName = async (
           ) as Record<string, number | string>;
 
           const { captions, polygonsOptions } = await (async () => {
-            if (dictionary?.[variableName]) {
+            if (
+              dictionary &&
+              Object.keys(dictionary?.[variableName]?.captions || {}).length > 0
+            ) {
               return getPolygonsOptionsForCategoricalValues({
                 values: variableData,
                 dictionary,
@@ -230,6 +282,8 @@ export const getProjectByName = async (
 
   return {
     ...project,
+    ai,
+    dictionary,
     regions,
   };
 };

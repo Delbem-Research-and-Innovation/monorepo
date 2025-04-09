@@ -1,11 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import { useGoogleMaps, useMap } from '@ttoss/google-maps';
 import { Icon } from '@ttoss/react-icons';
 import {
   Box,
+  Button,
   Flex,
   Grid,
   Heading,
-  InputNumber,
   Label,
   Select,
   Stack,
@@ -16,6 +17,7 @@ import {
   GetStaticProps,
   type InferGetStaticPropsType,
 } from 'next';
+import { useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import {
   type Caption,
@@ -56,6 +58,9 @@ export const getStaticProps: GetStaticProps<{
   if (!project) {
     return { notFound: true };
   }
+
+  // eslint-disable-next-line no-console
+  console.log('project', project);
 
   return { props: { project } };
 };
@@ -183,15 +188,25 @@ const Selector = (
         </Stack>
         <Stack sx={{ minWidth: '200px', gap: 1 }}>
           <Label htmlFor="map-height">Altura dos Mapas (px)</Label>
-          <InputNumber
+          <Select
             id="map-height"
             value={props.value.mapHeight}
-            step={50}
+            isSearchable={false}
+            options={[
+              { value: 700, label: '700px' },
+              { value: 800, label: '800px' },
+              { value: 900, label: '900px' },
+              { value: 1000, label: '1000px' },
+              { value: 1100, label: '1100px' },
+              { value: 1200, label: '1200px' },
+            ]}
             onChange={(value) => {
-              props.onChange({
-                ...props.value,
-                mapHeight: value,
-              });
+              if (value) {
+                props.onChange({
+                  ...props.value,
+                  mapHeight: Number(value),
+                });
+              }
             }}
           />
         </Stack>
@@ -321,7 +336,7 @@ const Map = (props: {
     center: props.region.mapConfig.center,
     zoom: props.region.mapConfig.zoom,
     minZoom: props.region.mapConfig.zoom - 3,
-    maxZoom: props.region.mapConfig.zoom + 3,
+    maxZoom: props.region.mapConfig.zoom + 4,
     // restriction: {
     //   latLngBounds: {
     //     east: SP_CENTER.lng + delta.lng,
@@ -520,18 +535,121 @@ const Map = (props: {
   );
 };
 
-const Page = (props: InferGetStaticPropsType<typeof getStaticProps>) => {
+const Insights = (
+  props: Props & {
+    selectorValues: SelectorValues;
+    setLocationCode: (locationCode: string) => void;
+  }
+) => {
+  // check if URL has query alexandre-ai=true
+  const searchParams = useSearchParams();
+
+  const isAlexandreAiEnabled =
+    searchParams.get('alexandre-ai') === 'true' && props.project.ai;
+
+  const { data, isFetching, isError, refetch } = useQuery({
+    enabled: false,
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/${props.project.name}/multimapas/insights?region=${props.selectorValues.tabName}`,
+        {
+          method: 'POST',
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch insights');
+      }
+      return response.json();
+    },
+    queryKey: ['insights', props.project.name, props.selectorValues.tabName],
+  });
+
+  const setLocationCode = props.setLocationCode;
+
+  React.useEffect(() => {
+    if (!data?.locationCode) {
+      return;
+    }
+
+    if (data.locationCode === props.selectorValues.locationCode) {
+      return;
+    }
+
+    setLocationCode(data.locationCode);
+  }, [data?.locationCode, props.selectorValues.locationCode, setLocationCode]);
+
+  if (!isAlexandreAiEnabled) {
+    return null;
+  }
+
+  return (
+    <Stack
+      sx={{
+        width: '100%',
+        backgroundColor: 'white',
+        padding: '6',
+        gap: '6',
+      }}
+    >
+      <Heading as="h2">Alexandre AI</Heading>
+      <Flex
+        sx={{
+          gap: '6',
+        }}
+      >
+        <Button
+          onClick={() => {
+            // setKeyLocationCode(props.selectorValues.locationCode);
+            return refetch();
+          }}
+          disabled={isFetching}
+          loading={isFetching}
+        >
+          {isFetching ? 'Pensando...' : 'Insights do Alexandre'}
+        </Button>
+      </Flex>
+      {isError && <Text color="red">Não consegui obter nenhum insight...</Text>}
+      {data && (
+        <Stack sx={{ gap: '3', maxWidth: '800px' }}>
+          <Heading as="h3">Insights:</Heading>
+          <Text
+            sx={{
+              fontStyle: 'italic',
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {data.insight}
+          </Text>
+          {/* <Heading as="h3">Instrução final:</Heading>
+          <Text
+            sx={{
+              fontStyle: 'italic',
+              whiteSpace: 'pre-line',
+            }}
+          >
+            {data.instructions}
+          </Text> */}
+        </Stack>
+      )}
+    </Stack>
+  );
+};
+
+const Page = (props: Props) => {
   const [selectorValues, setSelectorValues] = React.useState<SelectorValues>({
     tabName: props.project.regions[0].name,
     mapHeight: 800,
   });
 
-  const setLocationCode = (locationCode: string) => {
-    setSelectorValues({
-      ...selectorValues,
-      locationCode,
-    });
-  };
+  const setLocationCode = React.useCallback(
+    (locationCode: string) => {
+      setSelectorValues({
+        ...selectorValues,
+        locationCode,
+      });
+    },
+    [selectorValues]
+  );
 
   const region = props.project.regions.find((region) => {
     return region.name === selectorValues.tabName;
@@ -547,6 +665,11 @@ const Page = (props: InferGetStaticPropsType<typeof getStaticProps>) => {
           onChange={(values) => {
             setSelectorValues(values);
           }}
+        />
+        <Insights
+          {...props}
+          selectorValues={selectorValues}
+          setLocationCode={setLocationCode}
         />
         {region && (
           <Grid

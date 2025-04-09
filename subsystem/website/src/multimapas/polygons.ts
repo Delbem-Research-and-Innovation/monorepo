@@ -33,7 +33,7 @@ const getFrequencyTable = async ({
   classQty?: number;
 }) => {
   const dataTreat: number[] = data.reduce((acc, cur) => {
-    if (!cur || isNaN(+cur) || +cur == 0) {
+    if (cur === null || isNaN(+cur)) {
       return acc;
     }
     return [...acc, +cur];
@@ -118,8 +118,12 @@ export const getPolygonsOptionsForNumericalValues = async (
     (acc, [key, value]) => {
       const valueAsNumber = Number(value);
 
-      const caption = captions.find((c) => {
-        return c.value === valueAsNumber;
+      const caption = captions.find((c, index) => {
+        const nextCaption = captions[index + 1];
+        return (
+          valueAsNumber >= c.value &&
+          (!nextCaption || valueAsNumber < nextCaption.value)
+        );
       }) || {
         fillColor: 'transparent',
         value: 0,
@@ -147,7 +151,14 @@ export const getPolygonsOptionsForCategoricalValues = async ({
   variable,
 }: {
   values: Record<string, string | number>;
-  dictionary: Record<string, Record<string, string>>;
+  dictionary: Record<
+    string,
+    {
+      variable: string;
+      description: string;
+      captions: Record<string, string>;
+    }
+  >;
   variable: string;
 }) => {
   const uniqueValues = Array.from(new Set(Object.values(values)))
@@ -159,7 +170,7 @@ export const getPolygonsOptionsForCategoricalValues = async ({
     const noDecimalValue = String(Number(value));
     return {
       value,
-      name: dictionary[variable][noDecimalValue] || 'Não informado',
+      name: dictionary[variable].captions[noDecimalValue] || 'Não informado',
       fillColor: categoricalColors[index],
       dataType: 'categorical' as const,
     };
