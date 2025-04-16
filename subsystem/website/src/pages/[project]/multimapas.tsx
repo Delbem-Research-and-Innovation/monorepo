@@ -7,6 +7,7 @@ import {
   Flex,
   Grid,
   Heading,
+  Image,
   Label,
   Select,
   Stack,
@@ -58,9 +59,6 @@ export const getStaticProps: GetStaticProps<{
   if (!project) {
     return { notFound: true };
   }
-
-  // eslint-disable-next-line no-console
-  console.log('project', project);
 
   return { props: { project } };
 };
@@ -547,11 +545,17 @@ const Insights = (
   const isAlexandreAiEnabled =
     searchParams.get('alexandre-ai') === 'true' && props.project.ai;
 
+  const showPrompt = searchParams.get('show-prompt') === 'true';
+
+  const [wasLocationCodeSet, setWasLocationCodeSet] = React.useState(false);
+
   const { data, isFetching, isError, refetch } = useQuery({
     enabled: false,
     queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      searchParams.set('region', props.selectorValues.tabName);
       const response = await fetch(
-        `/api/${props.project.name}/multimapas/insights?region=${props.selectorValues.tabName}`,
+        `/api/${props.project.name}/multimapas/insights?${searchParams.toString()}`,
         {
           method: 'POST',
         }
@@ -571,67 +575,118 @@ const Insights = (
       return;
     }
 
-    if (data.locationCode === props.selectorValues.locationCode) {
+    if (wasLocationCodeSet) {
+      return;
+    }
+
+    if (isFetching) {
       return;
     }
 
     setLocationCode(data.locationCode);
-  }, [data?.locationCode, props.selectorValues.locationCode, setLocationCode]);
+    setWasLocationCodeSet(true);
+  }, [data?.locationCode, setLocationCode, wasLocationCodeSet, isFetching]);
 
   if (!isAlexandreAiEnabled) {
     return null;
   }
 
+  const imageSrc = (() => {
+    if (isFetching) {
+      return '/alexandre-ai-thinking.jpeg';
+    }
+
+    if (!data?.insight) {
+      return '/alexandre-ai.jpeg';
+    }
+
+    return '/alexandre-ai-happy.jpeg';
+  })();
+
   return (
-    <Stack
-      sx={{
-        width: '100%',
-        backgroundColor: 'white',
-        padding: '6',
-        gap: '6',
-      }}
-    >
-      <Heading as="h2">Alexandre AI</Heading>
-      <Flex
-        sx={{
-          gap: '6',
-        }}
-      >
-        <Button
-          onClick={() => {
-            // setKeyLocationCode(props.selectorValues.locationCode);
-            return refetch();
+    <Flex sx={{ width: '100%', backgroundColor: 'white', padding: '6' }}>
+      <Flex sx={{ justifyContent: 'center', alignItems: 'flex-start' }}>
+        <Image
+          src={imageSrc}
+          alt="Alexandre AI"
+          width={300}
+          height={300}
+          sx={{
+            objectFit: 'contain',
+            maxWidth: '100%',
+            maxHeight: '100%',
           }}
-          disabled={isFetching}
-          loading={isFetching}
-        >
-          {isFetching ? 'Pensando...' : 'Insights do Alexandre'}
-        </Button>
+        />
       </Flex>
-      {isError && <Text color="red">Não consegui obter nenhum insight...</Text>}
-      {data && (
-        <Stack sx={{ gap: '3', maxWidth: '800px' }}>
-          <Heading as="h3">Insights:</Heading>
-          <Text
-            sx={{
-              fontStyle: 'italic',
-              whiteSpace: 'pre-line',
+      <Stack sx={{ gap: '6', flex: 1, maxWidth: '800px' }}>
+        <Heading as="h2">Alexandre AI</Heading>
+        <Flex
+          sx={{
+            gap: '6',
+          }}
+        >
+          <Button
+            onClick={() => {
+              setWasLocationCodeSet(false);
+              refetch();
             }}
+            disabled={isFetching}
+            loading={isFetching}
           >
-            {data.insight}
-          </Text>
-          {/* <Heading as="h3">Instrução final:</Heading>
-          <Text
-            sx={{
-              fontStyle: 'italic',
-              whiteSpace: 'pre-line',
-            }}
-          >
-            {data.instructions}
-          </Text> */}
-        </Stack>
-      )}
-    </Stack>
+            {isFetching ? 'Pensando...' : 'Insights do Alexandre'}
+          </Button>
+        </Flex>
+        {isError && (
+          <Text color="red">Não consegui obter nenhum insight...</Text>
+        )}
+        {data && (
+          <Stack sx={{ gap: '3' }}>
+            <Heading as="h3">Insights:</Heading>
+            <Text
+              sx={{
+                fontStyle: 'italic',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {data.insight}
+            </Text>
+            {data.factCheck && (
+              <Text
+                sx={{
+                  fontSize: 'sm',
+                  color: 'gray',
+                  fontStyle: 'italic',
+                }}
+              >
+                Verificação de dados: {data.factCheck}
+              </Text>
+            )}
+            {showPrompt && (
+              <>
+                <Heading as="h3">Instruções:</Heading>
+                <Text
+                  sx={{
+                    fontStyle: 'italic',
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {data.instructions}
+                </Text>
+                <Heading as="h3">Input:</Heading>
+                <Text
+                  sx={{
+                    fontStyle: 'italic',
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {data.input}
+                </Text>
+              </>
+            )}
+          </Stack>
+        )}
+      </Stack>
+    </Flex>
   );
 };
 
