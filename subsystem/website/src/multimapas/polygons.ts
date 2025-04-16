@@ -163,7 +163,9 @@ export const getPolygonsOptionsForCategoricalValues = async ({
 }) => {
   const uniqueValues = Array.from(new Set(Object.values(values)))
     .sort()
-    .filter(Boolean)
+    .filter((value) => {
+      return value !== null && value !== undefined;
+    })
     .map(Number);
 
   const captions = uniqueValues.map((value, index) => {
