@@ -50,7 +50,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     );
     for (const variable of region.variables) {
       const variableInfo = project.dictionary[variable.name];
-      const variableName = variableInfo.variable || variable.name;
+      const variableName = variableInfo?.variable || variable.name;
 
       if (variableInfo) {
         // Use the variable name directly if the 'variable' property doesn't exist

@@ -11,6 +11,8 @@
 
   - Talk to project manager to get the keys.
 
+- Create Google credentials file `google-credentials.json`. This file is used to access Google Sheets API.
+
 - Build the image by running `pnpm run build:website-image` on root.
 
 - Turn on VPN `clic4aiL`.

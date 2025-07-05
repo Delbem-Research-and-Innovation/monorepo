@@ -11,8 +11,6 @@ WORKDIR /website/subsystem/website
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --frozen-lockfile
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --offline --frozen-lockfile
 RUN pnpm run build
-# WORKDIR /website/subsystem/website-polygons
-# RUN pnpm run generate-polygons
 
 FROM base AS prod
 WORKDIR /website/subsystem/website
@@ -21,7 +19,6 @@ COPY --from=build /website/subsystem/website/.next/ ./.next
 COPY --from=build /website/subsystem/website/.env ./.env
 COPY --from=build /website/subsystem/website/public ./public
 COPY --from=build /website/subsystem/website/simple4decision-f90a46b9bcbc.json ./simple4decision-f90a46b9bcbc.json
-# COPY --from=build /website/subsystem/website-polygons/src/polygons.json ./public/polygons.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --prod
 
