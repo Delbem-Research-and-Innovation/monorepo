@@ -235,16 +235,20 @@ export const getProjectByName = async (
       const locations = data.map((row) => {
         return {
           code: String(row[0]),
-          name: row[1],
+          name: row[1] || 'NOME NÃO INFORMADO',
         };
       });
 
       const variables = await Promise.all(
         variablesNames.map(async (variableName, index) => {
           const variableData = Object.fromEntries(
-            data.map((row) => {
-              return [row[0], row[index + 2]];
-            })
+            data
+              .filter((row) => {
+                return row[index + 2];
+              })
+              .map((row) => {
+                return [row[0], row[index + 2]];
+              })
           ) as Record<string, number | string>;
 
           const { captions, polygonsOptions } = await (async () => {

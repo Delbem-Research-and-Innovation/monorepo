@@ -35,6 +35,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-simple4decision-2dd7fc12acf5.json
 temp_csvs/
 public/polygons.json

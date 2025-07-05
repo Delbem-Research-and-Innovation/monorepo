@@ -52,15 +52,21 @@ export const getStaticProps: GetStaticProps<{
     return { notFound: true };
   }
 
-  const projectName = params.project as string;
+  try {
+    const projectName = params.project as string;
 
-  const project = await getProjectByName(projectName);
+    const project = await getProjectByName(projectName);
 
-  if (!project) {
+    if (!project) {
+      return { notFound: true };
+    }
+
+    return { props: { project } };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error fetching project:', error);
     return { notFound: true };
   }
-
-  return { props: { project } };
 };
 
 type Props = InferGetStaticPropsType<typeof getStaticProps>;
@@ -288,7 +294,8 @@ const LocationInfo = (props: { location: Location; variable: Variable }) => {
   const caption = props.variable.polygonsOptions[props.location.code]?.caption;
 
   const value =
-    caption?.dataType === 'categorical' ? caption.name : caption.value;
+    (caption?.dataType === 'categorical' ? caption?.name : caption?.value) ||
+    'LEGENDA NÃO INFORMADA';
 
   const hasValue = value !== undefined && value !== null;
 
