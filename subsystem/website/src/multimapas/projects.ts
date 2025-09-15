@@ -218,7 +218,13 @@ export const getProjectByName = async (
         valueRenderOption: 'UNFORMATTED_VALUE',
       });
 
-      const [, configArr, , headers, ...data] = [...(values.data.values || [])];
+      const [, configArr, , headers, ...restRows] = [
+        ...(values.data.values || []),
+      ];
+
+      const data = restRows.filter((row) => {
+        return row[0];
+      });
 
       const mapConfig = {
         geoJsonKey: configArr[0],
@@ -230,7 +236,7 @@ export const getProjectByName = async (
         },
       };
 
-      const [, , ...variablesNames] = headers;
+      const [, , ...variablesNames] = headers as string[];
 
       const locations = data.map((row) => {
         return {
@@ -244,7 +250,8 @@ export const getProjectByName = async (
           const variableData = Object.fromEntries(
             data
               .filter((row) => {
-                return row[index + 2];
+                const cell = row[index + 2];
+                return cell !== undefined && cell !== null && cell !== '';
               })
               .map((row) => {
                 return [row[0], row[index + 2]];
@@ -252,13 +259,41 @@ export const getProjectByName = async (
           ) as Record<string, number | string>;
 
           const { captions, polygonsOptions } = await (async () => {
+            /**
+             * Dictionary key may contain variable name or variable name with
+             * tabName as suffix separated by some character like space, dash,
+             * underscore, etc. When the last case happens, we need to find the
+             * entry in the dictionary that starts with the variable name
+             * and ends with the tab name.  For example, if the variable name is
+             * "population" and the tab name is "2020", we may have in the
+             * dictionary an entry like "population 2020" or "population-2020".
+             */
+            const variableNameWithTabName = Object.keys(dictionary || {}).find(
+              (key) => {
+                return key.startsWith(variableName) && key.endsWith(tabName);
+              }
+            );
+
+            let newDictionary = dictionary;
+
             if (
+              variableNameWithTabName &&
               dictionary &&
-              Object.keys(dictionary?.[variableName]?.captions || {}).length > 0
+              dictionary[variableNameWithTabName]
+            ) {
+              newDictionary = {
+                [variableName]: dictionary[variableNameWithTabName],
+              };
+            }
+
+            if (
+              newDictionary &&
+              Object.keys(newDictionary?.[variableName]?.captions || {})
+                .length > 0
             ) {
               return getPolygonsOptionsForCategoricalValues({
                 values: variableData,
-                dictionary,
+                dictionary: newDictionary,
                 variable: variableName,
               });
             }
