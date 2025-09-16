@@ -9,7 +9,7 @@ FROM base AS build
 COPY . /website
 WORKDIR /website/subsystem/website
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch --frozen-lockfile
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --offline --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --offline --frozen-lockfile --force
 RUN pnpm run build
 
 FROM base AS prod
