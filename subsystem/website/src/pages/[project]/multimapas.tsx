@@ -340,8 +340,7 @@ const Map = (props: {
     mapId: 'cb4133f1a7bdc518',
     center: props.region.mapConfig.center,
     zoom: props.region.mapConfig.zoom,
-    minZoom: props.region.mapConfig.zoom - 3,
-    maxZoom: props.region.mapConfig.zoom + 4,
+    minZoom: 3,
     // restriction: {
     //   latLngBounds: {
     //     east: SP_CENTER.lng + delta.lng,
@@ -532,6 +531,8 @@ const Map = (props: {
           position: 'absolute',
           top: 0,
           right: 0,
+          maxHeight: '80%',
+          overflow: 'auto',
         }}
       >
         <MapCaptions captions={props.variable.captions} />
