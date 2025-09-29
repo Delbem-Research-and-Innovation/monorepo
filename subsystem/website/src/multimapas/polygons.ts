@@ -1,22 +1,118 @@
 import { jenksBuckets } from './jenks';
 
-const categoricalColors = [
-  '#1f77b4',
-  '#ff7f0e',
-  '#2ca02c',
-  '#d62728',
-  '#9467bd',
-  '#8c564b',
-  '#e377c2',
-  '#7f7f7f',
-  '#bcbd22',
-  '#17becf',
-  '#aec7e8',
-  '#ffbb78',
-  '#98df8a',
-  '#ff9896',
-  '#c5b0d5',
-];
+// const categoricalColors = [
+//   '#1f77b4',
+//   '#ff7f0e',
+//   '#2ca02c',
+//   '#d62728',
+//   '#9467bd',
+//   '#8c564b',
+//   '#e377c2',
+//   '#7f7f7f',
+//   '#bcbd22',
+//   '#17becf',
+//   '#aec7e8',
+//   '#ffbb78',
+//   '#98df8a',
+//   '#ff9896',
+//   '#c5b0d5',
+// ];
+
+// Function to interpolate between two hex colors
+const interpolateColor = (
+  color1: string,
+  color2: string,
+  factor: number
+): string => {
+  const hex1 = color1.replace('#', '');
+  const hex2 = color2.replace('#', '');
+
+  const r1 = parseInt(hex1.substr(0, 2), 16);
+  const g1 = parseInt(hex1.substr(2, 2), 16);
+  const b1 = parseInt(hex1.substr(4, 2), 16);
+
+  const r2 = parseInt(hex2.substr(0, 2), 16);
+  const g2 = parseInt(hex2.substr(2, 2), 16);
+  const b2 = parseInt(hex2.substr(4, 2), 16);
+
+  const r = Math.round(r1 + (r2 - r1) * factor);
+  const g = Math.round(g1 + (g2 - g1) * factor);
+  const b = Math.round(b1 + (b2 - b1) * factor);
+
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
+// Generate gradient colors
+const baseColors = ['#00D4AA', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
+
+const categoricalColors = (() => {
+  let gradientColors = [];
+
+  for (let i = 0; i < baseColors.length; i++) {
+    gradientColors.push(baseColors[i]);
+
+    if (i < baseColors.length - 1) {
+      for (let j = 1; j <= 7; j++) {
+        const factor = j / 8;
+        const interpolatedColor = interpolateColor(
+          baseColors[i],
+          baseColors[i + 1],
+          factor
+        );
+        gradientColors.push(interpolatedColor);
+      }
+    }
+  }
+
+  gradientColors = gradientColors.sort();
+
+  /**
+   * Sort in a such way that colors with similar tones stay apart
+   * from each other in the array. This helps to avoid having
+   * similar colors next to each other when assigning colors
+   * to categorical values.
+   */
+  return [
+    gradientColors[0],
+    gradientColors[32],
+    // First half
+    gradientColors[16],
+    // Second half
+    gradientColors[8],
+    gradientColors[24],
+    // Third half
+    gradientColors[4],
+    gradientColors[12],
+    gradientColors[20],
+    gradientColors[28],
+    // Fourth half
+    gradientColors[2],
+    gradientColors[6],
+    gradientColors[10],
+    gradientColors[14],
+    gradientColors[18],
+    gradientColors[22],
+    gradientColors[26],
+    gradientColors[30],
+    // Fifth half
+    gradientColors[1],
+    gradientColors[3],
+    gradientColors[5],
+    gradientColors[7],
+    gradientColors[9],
+    gradientColors[11],
+    gradientColors[13],
+    gradientColors[15],
+    gradientColors[17],
+    gradientColors[19],
+    gradientColors[21],
+    gradientColors[23],
+    gradientColors[25],
+    gradientColors[27],
+    gradientColors[29],
+    gradientColors[31],
+  ];
+})();
 
 const numericalColors = ['#8C8C8C', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
 
