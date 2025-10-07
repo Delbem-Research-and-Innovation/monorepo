@@ -258,6 +258,7 @@ const MapCaptions = (props: { captions: Caption[] }) => {
           gap: '1',
           flexDirection: 'column',
           display: isOpen ? 'flex' : 'none',
+          overflowY: 'auto',
         }}
       >
         {props.captions.map((caption) => {
@@ -532,7 +533,8 @@ const Map = (props: {
           top: 0,
           right: 0,
           maxHeight: '80%',
-          overflow: 'auto',
+          height: 'auto',
+          overflow: 'hidden',
         }}
       >
         <MapCaptions captions={props.variable.captions} />
