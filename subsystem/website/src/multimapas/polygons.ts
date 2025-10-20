@@ -43,7 +43,18 @@ const interpolateColor = (
 };
 
 // Generate gradient colors
-const baseColors = ['#00D4AA', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
+// const baseColors = ['#00D4AA', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
+
+const baseColors = [
+  '#66FFE6',
+  '#00D4AA',
+  '#00B89F',
+  '#0093B2',
+  '#0067C5',
+  '#00497A',
+  '#004080',
+  '#002040',
+];
 
 const categoricalColors = (() => {
   let gradientColors = [];
@@ -52,8 +63,9 @@ const categoricalColors = (() => {
     gradientColors.push(baseColors[i]);
 
     if (i < baseColors.length - 1) {
-      for (let j = 1; j <= 7; j++) {
-        const factor = j / 8;
+      const maxInterpolations = 10;
+      for (let j = 1; j <= maxInterpolations; j++) {
+        const factor = j / (maxInterpolations + 1);
         const interpolatedColor = interpolateColor(
           baseColors[i],
           baseColors[i + 1],
@@ -64,54 +76,56 @@ const categoricalColors = (() => {
     }
   }
 
-  gradientColors = gradientColors.sort();
+  gradientColors = gradientColors.sort().reverse();
 
-  /**
-   * Sort in a such way that colors with similar tones stay apart
-   * from each other in the array. This helps to avoid having
-   * similar colors next to each other when assigning colors
-   * to categorical values.
-   */
-  return [
-    gradientColors[0],
-    gradientColors[32],
-    // First half
-    gradientColors[16],
-    // Second half
-    gradientColors[8],
-    gradientColors[24],
-    // Third half
-    gradientColors[4],
-    gradientColors[12],
-    gradientColors[20],
-    gradientColors[28],
-    // Fourth half
-    gradientColors[2],
-    gradientColors[6],
-    gradientColors[10],
-    gradientColors[14],
-    gradientColors[18],
-    gradientColors[22],
-    gradientColors[26],
-    gradientColors[30],
-    // Fifth half
-    gradientColors[1],
-    gradientColors[3],
-    gradientColors[5],
-    gradientColors[7],
-    gradientColors[9],
-    gradientColors[11],
-    gradientColors[13],
-    gradientColors[15],
-    gradientColors[17],
-    gradientColors[19],
-    gradientColors[21],
-    gradientColors[23],
-    gradientColors[25],
-    gradientColors[27],
-    gradientColors[29],
-    gradientColors[31],
-  ];
+  // /**
+  //  * Sort in a such way that colors with similar tones stay apart
+  //  * from each other in the array. This helps to avoid having
+  //  * similar colors next to each other when assigning colors
+  //  * to categorical values.
+  //  */
+  // return [
+  //   gradientColors[0],
+  //   gradientColors[32],
+  //   // First half
+  //   gradientColors[16],
+  //   // Second half
+  //   gradientColors[8],
+  //   gradientColors[24],
+  //   // Third half
+  //   gradientColors[4],
+  //   gradientColors[12],
+  //   gradientColors[20],
+  //   gradientColors[28],
+  //   // Fourth half
+  //   gradientColors[2],
+  //   gradientColors[6],
+  //   gradientColors[10],
+  //   gradientColors[14],
+  //   gradientColors[18],
+  //   gradientColors[22],
+  //   gradientColors[26],
+  //   gradientColors[30],
+  //   // Fifth half
+  //   gradientColors[1],
+  //   gradientColors[3],
+  //   gradientColors[5],
+  //   gradientColors[7],
+  //   gradientColors[9],
+  //   gradientColors[11],
+  //   gradientColors[13],
+  //   gradientColors[15],
+  //   gradientColors[17],
+  //   gradientColors[19],
+  //   gradientColors[21],
+  //   gradientColors[23],
+  //   gradientColors[25],
+  //   gradientColors[27],
+  //   gradientColors[29],
+  //   gradientColors[31],
+  // ];
+
+  return gradientColors;
 })();
 
 const numericalColors = ['#8C8C8C', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
