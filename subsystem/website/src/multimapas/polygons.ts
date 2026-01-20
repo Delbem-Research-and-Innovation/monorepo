@@ -45,88 +45,28 @@ const interpolateColor = (
 // Generate gradient colors
 // const baseColors = ['#00D4AA', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
 
-const baseColors = [
-  '#66FFE6',
-  '#00D4AA',
-  '#00B89F',
-  '#0093B2',
-  '#0067C5',
-  '#00497A',
-  '#004080',
-  '#002040',
-];
+const getCategoricalColors = (n: number = 1) => {
+  const initialColor = '#66FFE6';
+  const finalColor = '#002040';
 
-const categoricalColors = (() => {
-  let gradientColors = [];
+  const gradientColors = [initialColor];
 
-  for (let i = 0; i < baseColors.length; i++) {
-    gradientColors.push(baseColors[i]);
-
-    if (i < baseColors.length - 1) {
-      const maxInterpolations = 10;
-      for (let j = 1; j <= maxInterpolations; j++) {
-        const factor = j / (maxInterpolations + 1);
-        const interpolatedColor = interpolateColor(
-          baseColors[i],
-          baseColors[i + 1],
-          factor
-        );
-        gradientColors.push(interpolatedColor);
-      }
-    }
+  if (n <= 1) {
+    return gradientColors;
   }
 
-  gradientColors = gradientColors.sort().reverse();
-
-  // /**
-  //  * Sort in a such way that colors with similar tones stay apart
-  //  * from each other in the array. This helps to avoid having
-  //  * similar colors next to each other when assigning colors
-  //  * to categorical values.
-  //  */
-  // return [
-  //   gradientColors[0],
-  //   gradientColors[32],
-  //   // First half
-  //   gradientColors[16],
-  //   // Second half
-  //   gradientColors[8],
-  //   gradientColors[24],
-  //   // Third half
-  //   gradientColors[4],
-  //   gradientColors[12],
-  //   gradientColors[20],
-  //   gradientColors[28],
-  //   // Fourth half
-  //   gradientColors[2],
-  //   gradientColors[6],
-  //   gradientColors[10],
-  //   gradientColors[14],
-  //   gradientColors[18],
-  //   gradientColors[22],
-  //   gradientColors[26],
-  //   gradientColors[30],
-  //   // Fifth half
-  //   gradientColors[1],
-  //   gradientColors[3],
-  //   gradientColors[5],
-  //   gradientColors[7],
-  //   gradientColors[9],
-  //   gradientColors[11],
-  //   gradientColors[13],
-  //   gradientColors[15],
-  //   gradientColors[17],
-  //   gradientColors[19],
-  //   gradientColors[21],
-  //   gradientColors[23],
-  //   gradientColors[25],
-  //   gradientColors[27],
-  //   gradientColors[29],
-  //   gradientColors[31],
-  // ];
+  for (let i = 1; i < n; i++) {
+    const factor = (i + 1) / n;
+    const interpolatedColor = interpolateColor(
+      initialColor,
+      finalColor,
+      factor
+    );
+    gradientColors.push(interpolatedColor);
+  }
 
   return gradientColors;
-})();
+};
 
 const numericalColors = ['#8C8C8C', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
 
@@ -271,26 +211,31 @@ export const getPolygonsOptionsForCategoricalValues = async ({
   >;
   variable: string;
 }) => {
-  const uniqueValues = Array.from(new Set(Object.values(values)))
-    .sort()
-    .filter((value) => {
-      return value !== null && value !== undefined;
-    })
-    .map(Number);
+  const variableDict = dictionary[variable];
 
-  const captions = uniqueValues.map((value, index) => {
-    const noDecimalValue = String(Number(value));
-    return {
-      value,
-      name: dictionary[variable].captions[noDecimalValue] || 'Não informado',
-      fillColor: categoricalColors[index],
-      dataType: 'categorical' as const,
-    };
-  });
+  const categoricalColors = getCategoricalColors(
+    Object.entries(variableDict.captions).length
+  );
+
+  const getNoDecimal = (value: string | number) => {
+    return Number(value);
+  };
+
+  const captions = Object.entries(variableDict.captions).map(
+    ([key, caption], index) => {
+      const noDecimalValue = getNoDecimal(key);
+      return {
+        value: noDecimalValue,
+        name: caption || 'Não informado',
+        fillColor: categoricalColors[index],
+        dataType: 'categorical' as const,
+      };
+    }
+  );
 
   const polygonsOptions = Object.entries(values).reduce(
     (acc, [key, value]) => {
-      const noDecimalValue = Number(value);
+      const noDecimalValue = getNoDecimal(value);
 
       const caption = captions.find((caption) => {
         return caption.value === noDecimalValue;
