@@ -2,6 +2,7 @@
   "private": true,
   "name": "@simple4decision/website",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -10,11 +11,13 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@tanstack/react-query": "^5.55.4",
+    "@ttoss/geovis": "^0.1.9",
     "@ttoss/google-maps": "^2.1.6",
     "@ttoss/react-icons": "^0.4.9",
     "@ttoss/theme": "^2.5.0",
     "@ttoss/ui": "^5.5.0",
     "googleapis": "^144.0.0",
+    "maplibre-gl": "^5.24.0",
     "next": "15.1.6",
     "openai": "^4.93.0",
     "react": "19.0.0",

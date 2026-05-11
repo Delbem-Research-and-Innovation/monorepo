@@ -5,6 +5,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  transpilePackages: ['maplibre-gl', '@ttoss/geovis'],
 };
 
 export default nextConfig;
