@@ -66,12 +66,17 @@ export const toGeoVisSpec = (
         ),
       };
 
-  return {
+  const spec: VisualizationSpec = {
     id: specId,
     engine: 'maplibre',
     view: {
-      center: [mapConfig.center.lng, mapConfig.center.lat],
-      zoom: mapConfig.zoom,
+      ...(mapConfig.center != null && {
+        center: [mapConfig.center.lng, mapConfig.center.lat] as [
+          number,
+          number,
+        ],
+      }),
+      ...(mapConfig.zoom != null && { zoom: mapConfig.zoom }),
     },
     sources: [
       {
@@ -113,4 +118,6 @@ export const toGeoVisSpec = (
       },
     ],
   };
+
+  return spec;
 };

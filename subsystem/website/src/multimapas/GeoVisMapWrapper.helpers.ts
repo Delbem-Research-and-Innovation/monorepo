@@ -1,3 +1,5 @@
+import type { SetViewOptions } from '@ttoss/geovis';
+
 import type { Location, MapConfig, Region } from './projects';
 
 /**
@@ -36,13 +38,18 @@ export const codeFromFeatureId = (featureId: string | number): string => {
  * Rationale: geovis uses `[lng, lat]` for `LngLat` (matching GeoJSON
  * coordinates), whereas `MapConfig.center` stores `{ lat, lng }`. The swap
  * is intentional and mirrors the same convention used in `toGeoVisSpec`.
+ *
+ * Guards against `mapConfig.center` being `undefined` (not all regions define
+ * a default center). When absent, `center` is omitted and geovis keeps its
+ * current camera position.
  */
-export const cameraForDeselection = (
-  region: Region
-): { center: [number, number]; zoom: number; animate: boolean } => {
+export const cameraForDeselection = (region: Region): SetViewOptions => {
+  const { mapConfig } = region;
   return {
-    center: [region.mapConfig.center.lng, region.mapConfig.center.lat],
-    zoom: region.mapConfig.zoom,
+    ...(mapConfig.center != null && {
+      center: [mapConfig.center.lng, mapConfig.center.lat] as [number, number],
+    }),
+    ...(mapConfig.zoom != null && { zoom: mapConfig.zoom }),
     animate: true,
   };
 };

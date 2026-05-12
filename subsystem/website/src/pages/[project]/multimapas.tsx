@@ -1,8 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useGoogleMaps, useMap } from '@ttoss/google-maps';
-import { Icon } from '@ttoss/react-icons';
 import {
-  Box,
   Button,
   Flex,
   Grid,
@@ -20,14 +17,11 @@ import {
 } from 'next';
 import { useSearchParams } from 'next/navigation';
 import * as React from 'react';
+import { GeoVisMapWrapper } from 'src/multimapas/GeoVisMapWrapper';
 import {
-  type Caption,
   getProjectByName,
   listAllProjects,
-  type Location,
   type Project,
-  type Region,
-  type Variable,
 } from 'src/multimapas/projects';
 
 export const getStaticPaths: GetStaticPaths = async () => {
@@ -70,43 +64,6 @@ export const getStaticProps: GetStaticProps<{
 };
 
 type Props = InferGetStaticPropsType<typeof getStaticProps>;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GeoJsonDataContext = React.createContext<Record<string, any>>({});
-
-/**
- * Load GeoJson Data before to avoid fetching the same data multiple times.
- */
-const GeoJsonDataProvider = ({
-  regions,
-  children,
-}: {
-  regions: Region[];
-  children: React.ReactNode;
-}) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [geoJsonData, setGeoJsonData] = React.useState<Record<string, any>>({});
-
-  React.useEffect(() => {
-    const geoJsonUrls = regions.map((region) => {
-      return region.mapConfig.geoJsonUrl;
-    });
-
-    geoJsonUrls.forEach(async (url) => {
-      const response = await fetch(url);
-      const geoJson = await response.json();
-      setGeoJsonData((prev) => {
-        return { ...prev, [url]: geoJson };
-      });
-    }, []);
-  }, []);
-
-  return (
-    <GeoJsonDataContext.Provider value={geoJsonData}>
-      {children}
-    </GeoJsonDataContext.Provider>
-  );
-};
 
 type SelectorValues = {
   tabName: string;
@@ -216,330 +173,6 @@ const Selector = (
         </Stack>
       </Flex>
     </Stack>
-  );
-};
-
-const MapCaptions = (props: { captions: Caption[] }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  return (
-    <Flex
-      sx={{
-        gap: '2',
-        padding: '3',
-        backgroundColor: 'white',
-        flexDirection: 'column',
-        fontSize: 'sm',
-      }}
-    >
-      <Flex
-        sx={{
-          width: '100%',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          gap: '4',
-        }}
-        onClick={() => {
-          setIsOpen(!isOpen);
-        }}
-      >
-        <Text>Legenda</Text>
-        <Text
-          sx={{
-            fontSize: 'md',
-          }}
-        >
-          <Icon icon={isOpen ? 'picker-down' : 'picker-up'} />
-        </Text>
-      </Flex>
-      <Flex
-        sx={{
-          gap: '1',
-          flexDirection: 'column',
-          display: isOpen ? 'flex' : 'none',
-          overflowY: 'auto',
-        }}
-      >
-        {props.captions.map((caption) => {
-          return (
-            <Flex
-              key={caption.name}
-              sx={{
-                gap: '1',
-              }}
-            >
-              <Box
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: caption.fillColor,
-                }}
-              />
-              <Text
-                sx={{
-                  fontSize: 'sm',
-                }}
-              >
-                {caption.name}
-              </Text>
-            </Flex>
-          );
-        })}
-      </Flex>
-    </Flex>
-  );
-};
-
-const LocationInfo = (props: { location: Location; variable: Variable }) => {
-  const caption = props.variable.polygonsOptions[props.location.code]?.caption;
-
-  const value =
-    (caption?.dataType === 'categorical' ? caption?.name : caption?.value) ||
-    'LEGENDA NÃO INFORMADA';
-
-  const hasValue = value !== undefined && value !== null;
-
-  if (!props.location) {
-    return null;
-  }
-
-  return (
-    <Stack
-      sx={{
-        gap: '2',
-        padding: '3',
-        backgroundColor: 'white',
-        fontSize: 'sm',
-      }}
-    >
-      <Text sx={{ fontWeight: 'bold' }}>{props.location.name}</Text>
-      {hasValue && (
-        <Stack
-          sx={{
-            gap: '1',
-          }}
-        >
-          <Flex>Valor: {value}</Flex>
-        </Stack>
-      )}
-    </Stack>
-  );
-};
-
-const Map = (props: {
-  region: Region;
-  variable: Variable;
-  selectedLocationCode?: string;
-  setLocationCode: (locationCode: string) => void;
-}) => {
-  const { google } = useGoogleMaps();
-
-  // const delta = { lat: 4.5, lng: 9 };
-
-  const { ref, map } = useMap({
-    mapId: 'cb4133f1a7bdc518',
-    center: props.region.mapConfig.center,
-    zoom: props.region.mapConfig.zoom,
-    minZoom: 3,
-    // restriction: {
-    //   latLngBounds: {
-    //     east: SP_CENTER.lng + delta.lng,
-    //     north: SP_CENTER.lat + delta.lat,
-    //     south: SP_CENTER.lat - delta.lat,
-    //     west: SP_CENTER.lng - delta.lng,
-    //   },
-    // },
-    mapTypeControl: false,
-    gestureHandling: 'cooperative',
-    disableDefaultUI: false,
-    streetViewControl: false,
-    fullscreenControl: false,
-  });
-
-  const currentGeoJson = React.useRef<google.maps.Data>(null);
-
-  const geoJsonData = React.useContext(GeoJsonDataContext);
-
-  const [temporaryLocationCode, setTemporaryLocationCode] = React.useState('');
-
-  const temporaryLocation = props.region.locations.find((l) => {
-    return l.code === temporaryLocationCode;
-  });
-
-  /**
-   * Load GeoJson
-   */
-  React.useEffect(() => {
-    if (map && google.maps) {
-      if (currentGeoJson.current) {
-        currentGeoJson.current.forEach((feature) => {
-          currentGeoJson.current?.remove(feature);
-        });
-      }
-
-      const geoJson = new google.maps.Data({
-        map,
-        style: {
-          strokeColor: 'black',
-          strokeWeight: 1,
-          fillOpacity: 1,
-        },
-      });
-
-      currentGeoJson.current = geoJson;
-
-      geoJson.addGeoJson(geoJsonData[props.region.mapConfig.geoJsonUrl], null);
-
-      geoJson.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
-        const code = String(
-          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
-        );
-
-        setTemporaryLocationCode(code);
-
-        geoJson.overrideStyle(event.feature, { strokeWeight: 3 });
-      });
-
-      geoJson.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
-        setTemporaryLocationCode('');
-
-        const code = String(
-          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
-        );
-
-        if (code !== props.selectedLocationCode) {
-          geoJson.overrideStyle(event.feature, { strokeWeight: 1 });
-        }
-      });
-
-      geoJson.addListener('click', (event: google.maps.Data.MouseEvent) => {
-        const code = String(
-          event.feature.getProperty(props.region.mapConfig.geoJsonKey)
-        );
-
-        props.setLocationCode(String(code));
-      });
-
-      geoJson.addListener('rightclick', () => {
-        props.setLocationCode('');
-      });
-
-      geoJson.forEach((feature) => {
-        const code = String(
-          feature.getProperty(props.region.mapConfig.geoJsonKey)
-        );
-
-        const options = props.variable.polygonsOptions[code];
-
-        geoJson.overrideStyle(feature, {
-          fillColor: options?.fillColor || 'transparent',
-        });
-      });
-    }
-  }, [map, google, geoJsonData, props]);
-
-  const selectedLocation = props.region.locations.find((l) => {
-    return String(l.code) === props.selectedLocationCode;
-  });
-
-  /**
-   * Handle selected location
-   */
-  React.useEffect(() => {
-    if (selectedLocation) {
-      currentGeoJson.current?.forEach((feature) => {
-        if (
-          String(feature.getProperty(props.region.mapConfig.geoJsonKey)) ===
-          props.selectedLocationCode
-        ) {
-          currentGeoJson.current?.overrideStyle(feature, { strokeWeight: 5 });
-
-          /**
-           * Center map
-           */
-          if (google.maps) {
-            const bounds = new google.maps.LatLngBounds();
-
-            feature.getGeometry()?.forEachLatLng((latLng) => {
-              bounds.extend(latLng);
-            });
-
-            map?.fitBounds(bounds);
-          }
-        }
-      });
-    } else {
-      map?.setCenter(props.region.mapConfig.center);
-      map?.setZoom(props.region.mapConfig.zoom);
-    }
-  }, [
-    google.maps,
-    map,
-    props.region.mapConfig.center,
-    props.region.mapConfig.geoJsonKey,
-    props.region.mapConfig.zoom,
-    props.selectedLocationCode,
-    selectedLocation,
-  ]);
-
-  return (
-    <Flex
-      sx={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-      }}
-    >
-      <Flex
-        ref={ref}
-        sx={{
-          position: 'absolute',
-          width: '100%',
-          height: '100%',
-        }}
-      />
-      <Flex
-        sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-        }}
-      >
-        {temporaryLocation && (
-          <LocationInfo
-            location={temporaryLocation}
-            variable={props.variable}
-          />
-        )}
-        {selectedLocation && !temporaryLocation && (
-          <LocationInfo location={selectedLocation} variable={props.variable} />
-        )}
-      </Flex>
-      <Flex
-        sx={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          backgroundColor: 'white',
-          padding: '1',
-        }}
-      >
-        <Text sx={{ fontWeight: 'bold' }}>{props.variable.name}</Text>
-      </Flex>
-      <Flex
-        sx={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          maxHeight: '80%',
-          height: 'auto',
-          overflow: 'hidden',
-        }}
-      >
-        <MapCaptions captions={props.variable.captions} />
-      </Flex>
-    </Flex>
   );
 };
 
@@ -721,45 +354,43 @@ const Page = (props: Props) => {
   });
 
   return (
-    <GeoJsonDataProvider regions={props.project.regions}>
-      <Stack sx={{ gap: '8', alignItems: 'flex-start', width: '100%' }}>
-        <Heading as="h1">Multimapas</Heading>
-        <Selector
-          {...props}
-          value={selectorValues}
-          onChange={(values) => {
-            setSelectorValues(values);
+    <Stack sx={{ gap: '8', alignItems: 'flex-start', width: '100%' }}>
+      <Heading as="h1">Multimapas</Heading>
+      <Selector
+        {...props}
+        value={selectorValues}
+        onChange={(values) => {
+          setSelectorValues(values);
+        }}
+      />
+      <Insights
+        {...props}
+        selectorValues={selectorValues}
+        setLocationCode={setLocationCode}
+      />
+      {region && (
+        <Grid
+          sx={{
+            height: `${selectorValues.mapHeight}px`,
+            width: '100%',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '6',
           }}
-        />
-        <Insights
-          {...props}
-          selectorValues={selectorValues}
-          setLocationCode={setLocationCode}
-        />
-        {region && (
-          <Grid
-            sx={{
-              height: `${selectorValues.mapHeight}px`,
-              width: '100%',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '6',
-            }}
-          >
-            {region?.variables.map((variable) => {
-              return (
-                <Map
-                  key={variable.name}
-                  region={region}
-                  variable={variable}
-                  selectedLocationCode={selectorValues.locationCode}
-                  setLocationCode={setLocationCode}
-                />
-              );
-            })}
-          </Grid>
-        )}
-      </Stack>
-    </GeoJsonDataProvider>
+        >
+          {region?.variables.map((variable) => {
+            return (
+              <GeoVisMapWrapper
+                key={variable.name}
+                region={region}
+                variable={variable}
+                selectedLocationCode={selectorValues.locationCode}
+                setLocationCode={setLocationCode}
+              />
+            );
+          })}
+        </Grid>
+      )}
+    </Stack>
   );
 };
 
