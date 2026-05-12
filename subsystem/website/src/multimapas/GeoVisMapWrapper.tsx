@@ -1,4 +1,15 @@
 import type { MapHoverInfo } from '@ttoss/geovis';
+
+/**
+ * Minimal interface for the MapLibre map instance returned by
+ * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
+ */
+type NativeMap = {
+  on: (event: string, handler: () => void) => void;
+  off: (event: string, handler: () => void) => void;
+  getCenter: () => { lng: number; lat: number };
+  getZoom: () => number;
+};
 import {
   GeoVisCanvas,
   GeoVisHoverTooltip,
@@ -15,6 +26,7 @@ import {
   locationForFeatureId,
 } from './GeoVisMapWrapper.helpers';
 import type { Region, Variable } from './projects';
+import { useSyncCamera } from './SyncCameraContext';
 import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
@@ -88,33 +100,179 @@ const GeoVisMapInner = ({
   legendId,
 }: GeoVisMapWrapperProps & { legendId: string | undefined }) => {
   const clickInfo = useGeoVisClick();
-  const { setView } = useGeoVis();
+  const { setView, runtime } = useGeoVis();
+  const syncCamera = useSyncCamera();
+
+  const isSyncingRef = React.useRef(false);
+  const syncedSetViewRef = React.useRef<typeof setView | null>(null);
+  const isUserGestureRef = React.useRef(false);
+
+  /**
+   * Refs that always hold the latest prop/hook values without adding those
+   * values as effect dependencies. Assigning unconditionally on every render
+   * is safe (no loop risk) and ensures closures inside effects always call
+   * the current function rather than a stale captured copy.
+   *
+   * - setLocationCodeRef: prevents the click effect from re-running (and
+   *   re-broadcasting) every time the parent re-creates setLocationCode after
+   *   state updates triggered by the previous click.
+   * - setViewRef: prevents the pan/zoom effect from removing and re-adding
+   *   MapLibre event handlers whenever setView changes identity, eliminating
+   *   the handler-registration gap that could drop a movestart event and
+   *   leave isSyncingRef permanently stuck as true.
+   */
+  const setLocationCodeRef = React.useRef(setLocationCode);
+  setLocationCodeRef.current = setLocationCode;
+  const setViewRef = React.useRef(setView);
+  setViewRef.current = setView;
+
+  /**
+   * Register a wrapped setView so incoming broadcasts:
+   *   1. Set isSyncingRef before applying the camera — the resulting movestart
+   *      clears this flag instead of arming isUserGestureRef, preventing the
+   *      move handler from re-broadcasting (echo loop).
+   *   2. Clear isUserGestureRef — if this map was mid-gesture when the
+   *      broadcast arrived, the move handler must stop re-broadcasting
+   *      immediately so it does not interrupt the incoming flyTo with a
+   *      conflicting jumpTo.
+   */
+  React.useEffect(() => {
+    if (!syncCamera) {
+      return;
+    }
+    const syncedSetView: typeof setView = (options) => {
+      isUserGestureRef.current = false;
+      isSyncingRef.current = true;
+      setView(options);
+    };
+    syncedSetViewRef.current = syncedSetView;
+    return syncCamera.register(syncedSetView);
+  }, [syncCamera, setView]);
 
   /**
    * Propagate click events to the parent via setLocationCode.
    * codeFromFeatureId coerces numeric featureIds to string (geovis can emit
    * either type depending on the GeoJSON source feature ids).
+   *
+   * Camera movement: all maps (source and siblings) use animate:true so the
+   * user sees a synchronized flyTo across the grid.
+   *
+   * isUserGestureRef is cleared first: if the user was mid-pan when they
+   * clicked, the move handler must not continue re-broadcasting animate:false
+   * to siblings while their flyTo animations are in flight — that would
+   * interrupt the animations with an immediate jumpTo.
+   *
+   * setLocationCode is called via ref (not listed in deps) so that a new
+   * setLocationCode identity from the parent — created after the state update
+   * triggered by this very call — does not cause the effect to re-run with
+   * the same clickInfo and double-execute the click logic.
    */
   React.useEffect(() => {
     if (clickInfo) {
-      setLocationCode(codeFromFeatureId(clickInfo.featureId));
-      setView({ center: clickInfo.lngLat });
+      isUserGestureRef.current = false;
+      setLocationCodeRef.current(codeFromFeatureId(clickInfo.featureId));
+      isSyncingRef.current = true;
+      setView({ center: clickInfo.lngLat, animate: true });
+      syncCamera?.broadcast(
+        { center: clickInfo.lngLat, animate: true },
+        syncedSetViewRef.current ?? setView
+      );
     }
-  }, [clickInfo, setLocationCode, setView]);
+  }, [clickInfo, setView, syncCamera]);
 
   /**
    * Reset the camera to region defaults when the selection is cleared.
    * cameraForDeselection swaps lat/lng → [lng, lat] as required by geovis.
+   * Broadcast the reset to all sibling maps.
+   *
+   * isUserGestureRef is cleared for the same reason as in the click effect:
+   * an ongoing gesture must not re-broadcast jumpTo frames on top of the
+   * reset flyTo.
    */
   React.useEffect(() => {
     if (!selectedLocationCode) {
-      setView(cameraForDeselection(region));
+      isUserGestureRef.current = false;
+      const cameraOptions = cameraForDeselection(region);
+      isSyncingRef.current = true;
+      setView(cameraOptions);
+      syncCamera?.broadcast(cameraOptions, syncedSetViewRef.current ?? setView);
     }
-  }, [selectedLocationCode, region, setView]);
+  }, [selectedLocationCode, region, setView, syncCamera]);
 
   const hoverRenderer = React.useMemo(() => {
     return renderHoverTooltip(region);
   }, [region]);
+
+  /**
+   * Real-time pan/zoom sync via native MapLibre events.
+   *
+   * `movestart` — distinguishes user gestures from broadcast-triggered moves:
+   *   if isSyncingRef is set (incoming broadcast), clears the flag and exits;
+   *   otherwise marks isUserGestureRef so the `move` handler knows to broadcast.
+   *
+   * `move` — fires every animation frame during drag or flyTo;
+   *   broadcasts current camera to siblings only when the user is the source
+   *   (isUserGestureRef = true). Siblings receive animate:false so they track
+   *   in real-time without their own flyTo delay.
+   *
+   * `moveend` — clears isUserGestureRef when the gesture or animation ends.
+   *   Also clears isSyncingRef as a safety net: if movestart was missed (race
+   *   between effect registration and MapLibre initialisation), the stuck flag
+   *   is guaranteed to be cleared by the time the map stops moving.
+   *
+   * Echo prevention: broadcast → syncedSetView → isSyncingRef=true →
+   *   sibling movestart clears flag → sibling move sees isUserGestureRef=false
+   *   → no re-broadcast.
+   *
+   * setView is accessed via setViewRef (not listed in deps) so that the
+   * handlers are registered exactly once per runtime instance. Registering on
+   * every setView identity change would create a gap between off() and on()
+   * where a movestart could be silently dropped, permanently leaving
+   * isSyncingRef=true and blocking all subsequent pan/zoom broadcasts.
+   */
+  React.useEffect(() => {
+    if (!runtime || !syncCamera) {
+      return;
+    }
+    const nativeMap = runtime
+      .getAdapter()
+      .getNativeInstance() as NativeMap | null;
+    if (!nativeMap) {
+      return;
+    }
+    const handleMoveStart = () => {
+      if (isSyncingRef.current) {
+        isSyncingRef.current = false;
+        return;
+      }
+      isUserGestureRef.current = true;
+    };
+    const handleMove = () => {
+      if (!isUserGestureRef.current) {
+        return;
+      }
+      const center: [number, number] = [
+        nativeMap.getCenter().lng,
+        nativeMap.getCenter().lat,
+      ];
+      syncCamera.broadcast(
+        { center, zoom: nativeMap.getZoom(), animate: false },
+        syncedSetViewRef.current ?? setViewRef.current
+      );
+    };
+    const handleMoveEnd = () => {
+      isUserGestureRef.current = false;
+      isSyncingRef.current = false;
+    };
+    nativeMap.on('movestart', handleMoveStart);
+    nativeMap.on('move', handleMove);
+    nativeMap.on('moveend', handleMoveEnd);
+    return () => {
+      nativeMap.off('movestart', handleMoveStart);
+      nativeMap.off('move', handleMove);
+      nativeMap.off('moveend', handleMoveEnd);
+    };
+  }, [runtime, syncCamera]);
 
   return (
     <div

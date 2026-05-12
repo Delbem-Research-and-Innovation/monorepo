@@ -23,6 +23,7 @@ import {
   listAllProjects,
   type Project,
 } from 'src/multimapas/projects';
+import { SyncCameraProvider } from 'src/multimapas/SyncCameraProvider';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const projects = await listAllProjects();
@@ -339,15 +340,11 @@ const Page = (props: Props) => {
     mapHeight: 800,
   });
 
-  const setLocationCode = React.useCallback(
-    (locationCode: string) => {
-      setSelectorValues({
-        ...selectorValues,
-        locationCode,
-      });
-    },
-    [selectorValues]
-  );
+  const setLocationCode = React.useCallback((locationCode: string) => {
+    setSelectorValues((prev) => {
+      return { ...prev, locationCode };
+    });
+  }, []);
 
   const region = props.project.regions.find((region) => {
     return region.name === selectorValues.tabName;
@@ -369,26 +366,28 @@ const Page = (props: Props) => {
         setLocationCode={setLocationCode}
       />
       {region && (
-        <Grid
-          sx={{
-            height: `${selectorValues.mapHeight}px`,
-            width: '100%',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '6',
-          }}
-        >
-          {region?.variables.map((variable) => {
-            return (
-              <GeoVisMapWrapper
-                key={variable.name}
-                region={region}
-                variable={variable}
-                selectedLocationCode={selectorValues.locationCode}
-                setLocationCode={setLocationCode}
-              />
-            );
-          })}
-        </Grid>
+        <SyncCameraProvider>
+          <Grid
+            sx={{
+              height: `${selectorValues.mapHeight}px`,
+              width: '100%',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6',
+            }}
+          >
+            {region?.variables.map((variable) => {
+              return (
+                <GeoVisMapWrapper
+                  key={variable.name}
+                  region={region}
+                  variable={variable}
+                  selectedLocationCode={selectorValues.locationCode}
+                  setLocationCode={setLocationCode}
+                />
+              );
+            })}
+          </Grid>
+        </SyncCameraProvider>
       )}
     </Stack>
   );
