@@ -1,0 +1,116 @@
+import type { ColorBy, VisualizationSpec } from '@ttoss/geovis';
+
+import type { Region, Variable } from './projects';
+
+/**
+ * Converts a `Region` + `Variable` pair from the Multimapas data model into
+ * a `VisualizationSpec` for GeoVis.
+ *
+ * Color mapping (numerical):
+ * - `thresholds = captions.slice(1).map(c => c.value)` — N-1 break points for
+ *   N buckets, matching the MapLibre `step` semantics used internally.
+ * - `colors = captions.map(c => c.fillColor)` — N colors; palette[0] is the
+ *   fallback for values below the first threshold (below-minimum values).
+ *
+ * @param region - Region containing map configuration and location list.
+ * @param variable - Variable with choropleth data and pre-computed captions.
+ * @returns A `VisualizationSpec` ready to pass to `<GeoVisProvider spec={}>`.
+ */
+/** Converts an arbitrary string to a lowercase slug safe for use as an ID. */
+const toSlug = (str: string): string => {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+};
+
+export const toGeoVisSpec = (
+  region: Region,
+  variable: Variable
+): VisualizationSpec => {
+  const { mapConfig } = region;
+
+  const specId = `${toSlug(region.name)}--${toSlug(variable.name)}`;
+  const sourceId = `${specId}__geo`;
+  const layerId = `${specId}__choropleth`;
+  const mapDataId = `${specId}__values`;
+  const legendId = `${specId}__legend`;
+
+  const isNumerical = variable.captions[0]?.dataType === 'numerical';
+
+  const colorBy: ColorBy = isNumerical
+    ? {
+        type: 'quantitative',
+        property: 'value',
+        scale: 'threshold',
+        // N-1 thresholds for N captions: boundary is the value of captions[i]
+        // for i=1..N-1 (the lower bound of each successive bucket).
+        thresholds: variable.captions.slice(1).map((c) => {
+          return c.value;
+        }),
+        colors: variable.captions.map((c) => {
+          return c.fillColor;
+        }),
+      }
+    : {
+        type: 'categorical',
+        property: 'value',
+        // For categorical variables, value stored in mapData is the raw
+        // category key (e.g. "1", "2"). mapping keys must match those values.
+        mapping: Object.fromEntries(
+          variable.captions.map((c) => {
+            return [String(c.value), c.fillColor];
+          })
+        ),
+      };
+
+  return {
+    id: specId,
+    engine: 'maplibre',
+    view: {
+      center: [mapConfig.center.lng, mapConfig.center.lat],
+      zoom: mapConfig.zoom,
+    },
+    sources: [
+      {
+        id: sourceId,
+        type: 'geojson',
+        data: mapConfig.geoJsonUrl,
+      },
+    ],
+    layers: [
+      {
+        id: layerId,
+        sourceId,
+        geometry: 'polygon',
+        mapDataId,
+        activeLegendId: legendId,
+        paint: {
+          lineColor: '#000000',
+          fillOpacity: 1,
+        },
+      },
+    ],
+    mapData: [
+      {
+        mapDataId,
+        mapId: sourceId,
+        joinKey: mapConfig.geoJsonKey,
+        data: Object.entries(variable.polygonsOptions).map(([code, opts]) => {
+          return {
+            geometryId: code,
+            value: opts.value,
+          };
+        }),
+      },
+    ],
+    legends: [
+      {
+        id: legendId,
+        colorBy,
+      },
+    ],
+  };
+};

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest --projects tests/unit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -26,9 +27,12 @@
   "devDependencies": {
     "@ttoss/eslint-config": "^1.26.0",
     "@types/google.maps": "^3.58.1",
+    "@types/jest": "^29.5.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
     "typescript": "~5.8.3"
   }
 }
