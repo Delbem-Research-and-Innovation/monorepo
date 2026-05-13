@@ -26,6 +26,35 @@ const toSlug = (str: string): string => {
     .replace(/^-|-$/g, '');
 };
 
+const buildColorBy = (captions: Variable['captions']): ColorBy => {
+  const isNumerical = captions[0]?.dataType === 'numerical';
+  return isNumerical
+    ? {
+        type: 'quantitative',
+        property: 'value',
+        scale: 'threshold',
+        // N-1 thresholds for N captions: boundary is the value of captions[i]
+        // for i=1..N-1 (the lower bound of each successive bucket).
+        thresholds: captions.slice(1).map((c) => {
+          return c.value;
+        }),
+        colors: captions.map((c) => {
+          return c.fillColor;
+        }),
+      }
+    : {
+        type: 'categorical',
+        property: 'value',
+        // For categorical variables, value stored in mapData is the raw
+        // category key (e.g. "1", "2"). mapping keys must match those values.
+        mapping: Object.fromEntries(
+          captions.map((c) => {
+            return [String(c.value), c.fillColor];
+          })
+        ),
+      };
+};
+
 export const toGeoVisSpec = (
   region: Region,
   variable: Variable
@@ -38,33 +67,8 @@ export const toGeoVisSpec = (
   const mapDataId = `${specId}__values`;
   const legendId = `${specId}__legend`;
 
-  const isNumerical = variable.captions[0]?.dataType === 'numerical';
-
-  const colorBy: ColorBy = isNumerical
-    ? {
-        type: 'quantitative',
-        property: 'value',
-        scale: 'threshold',
-        // N-1 thresholds for N captions: boundary is the value of captions[i]
-        // for i=1..N-1 (the lower bound of each successive bucket).
-        thresholds: variable.captions.slice(1).map((c) => {
-          return c.value;
-        }),
-        colors: variable.captions.map((c) => {
-          return c.fillColor;
-        }),
-      }
-    : {
-        type: 'categorical',
-        property: 'value',
-        // For categorical variables, value stored in mapData is the raw
-        // category key (e.g. "1", "2"). mapping keys must match those values.
-        mapping: Object.fromEntries(
-          variable.captions.map((c) => {
-            return [String(c.value), c.fillColor];
-          })
-        ),
-      };
+  const hasCaption = variable.captions.length > 0;
+  const colorBy = buildColorBy(variable.captions);
 
   const spec: VisualizationSpec = {
     id: specId,
@@ -91,7 +95,7 @@ export const toGeoVisSpec = (
         sourceId,
         geometry: 'polygon',
         mapDataId,
-        activeLegendId: legendId,
+        ...(hasCaption && { activeLegendId: legendId }),
         paint: {
           lineColor: '#000000',
           fillOpacity: 1,
@@ -111,12 +115,14 @@ export const toGeoVisSpec = (
         }),
       },
     ],
-    legends: [
-      {
-        id: legendId,
-        colorBy,
-      },
-    ],
+    ...(hasCaption && {
+      legends: [
+        {
+          id: legendId,
+          colorBy,
+        },
+      ],
+    }),
   };
 
   return spec;
