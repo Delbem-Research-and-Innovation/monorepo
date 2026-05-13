@@ -22,6 +22,7 @@ import * as React from 'react';
 
 import {
   cameraForDeselection,
+  cameraForSelection,
   codeFromFeatureId,
   locationForFeatureId,
 } from './GeoVisMapWrapper.helpers';
@@ -198,6 +199,32 @@ const GeoVisMapInner = ({
       syncCamera?.broadcast(cameraOptions, syncedSetViewRef.current ?? setView);
     }
   }, [selectedLocationCode, region, setView, syncCamera]);
+
+  /**
+   * Center the map when a location is programmatically selected (e.g. via the
+   * location select dropdown or external state). Only fires when the location
+   * has a `center` field; otherwise the camera is left unchanged.
+   *
+   * No broadcast: every sibling map receives the same `selectedLocationCode`
+   * prop and will independently apply this effect, so broadcasting would
+   * cause redundant setView calls on already-moving maps.
+   */
+  React.useEffect(() => {
+    if (!selectedLocationCode) {
+      return;
+    }
+    const location = locationForFeatureId(selectedLocationCode, region);
+    if (!location) {
+      return;
+    }
+    const cameraOptions = cameraForSelection(location);
+    if (!cameraOptions) {
+      return;
+    }
+    isUserGestureRef.current = false;
+    isSyncingRef.current = true;
+    setView(cameraOptions);
+  }, [selectedLocationCode, region, setView]);
 
   const hoverRenderer = React.useMemo(() => {
     return renderHoverTooltip(region);
