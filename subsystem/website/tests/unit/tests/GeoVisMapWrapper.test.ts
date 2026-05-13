@@ -12,10 +12,11 @@
  */
 import {
   cameraForDeselection,
+  cameraForSelection,
   codeFromFeatureId,
   locationForFeatureId,
 } from 'src/multimapas/GeoVisMapWrapper.helpers';
-import type { MapConfig, Region } from 'src/multimapas/projects';
+import type { Location, MapConfig, Region } from 'src/multimapas/projects';
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -81,5 +82,36 @@ describe('cameraForDeselection', () => {
     // Wrong order would move the map to the Indian Ocean instead of São Paulo.
     const camera = cameraForDeselection(region);
     expect(camera.center).toEqual([-46.6, -23.5]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cameraForSelection
+// ---------------------------------------------------------------------------
+
+describe('cameraForSelection', () => {
+  test('returns null when location has no center', () => {
+    const loc: Location = { code: '35001', name: 'Distrito A' };
+    expect(cameraForSelection(loc)).toBeNull();
+  });
+
+  test('center is [lng, lat] — not [lat, lng] — matching geovis LngLat convention', () => {
+    const loc: Location = {
+      code: '35001',
+      name: 'Distrito A',
+      center: { lat: -23.5, lng: -46.6 },
+    };
+    const camera = cameraForSelection(loc);
+    expect(camera?.center).toEqual([-46.6, -23.5]);
+  });
+
+  test('animate is true', () => {
+    const loc: Location = {
+      code: '35001',
+      name: 'Distrito A',
+      center: { lat: -23.5, lng: -46.6 },
+    };
+    const camera = cameraForSelection(loc);
+    expect(camera?.animate).toBe(true);
   });
 });

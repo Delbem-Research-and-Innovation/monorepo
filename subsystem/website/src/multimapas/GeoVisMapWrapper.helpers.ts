@@ -54,5 +54,27 @@ export const cameraForDeselection = (region: Region): SetViewOptions => {
   };
 };
 
+/**
+ * Returns the camera options to center the map on a location selected from
+ * the UI (e.g. the location select dropdown).
+ *
+ * Returns `null` when the location has no `center` — in that case the caller
+ * must not call `setView`, preserving the current camera position.
+ *
+ * Coordinate convention: same swap as `cameraForDeselection` — geovis uses
+ * `[lng, lat]` whereas `Location.center` stores `{ lat, lng }`.
+ */
+export const cameraForSelection = (
+  location: Location
+): SetViewOptions | null => {
+  if (!location.center) {
+    return null;
+  }
+  return {
+    center: [location.center.lng, location.center.lat] as [number, number],
+    animate: true,
+  };
+};
+
 // Re-export MapConfig so consumers can reference the type without a second import.
 export type { MapConfig };

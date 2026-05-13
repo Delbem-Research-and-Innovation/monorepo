@@ -159,4 +159,46 @@ describe('GeoVisMapWrapper', () => {
       expect.objectContaining({ center: [-46.6, -23.5] })
     );
   });
+
+  test('select: calls setView with [lng, lat] center when selectedLocationCode matches a location with center', () => {
+    // Location has a centroid; selecting from the dropdown should fly the map to it.
+    const regionWithCenter: Region = {
+      ...region,
+      locations: [
+        {
+          code: '35001',
+          name: 'Distrito A',
+          center: { lat: -23.5, lng: -46.6 },
+        },
+        { code: '35002', name: 'Distrito B' },
+      ],
+    };
+
+    render(
+      <GeoVisMapWrapper
+        region={regionWithCenter}
+        variable={variable}
+        selectedLocationCode="35001"
+        setLocationCode={setLocationCode}
+      />
+    );
+
+    expect(mockSetView).toHaveBeenCalledWith(
+      expect.objectContaining({ center: [-46.6, -23.5], animate: true })
+    );
+  });
+
+  test('select: does not call setView when location has no center', () => {
+    // existing fixture — locations have no center property
+    render(
+      <GeoVisMapWrapper
+        region={region}
+        variable={variable}
+        selectedLocationCode="35001"
+        setLocationCode={setLocationCode}
+      />
+    );
+
+    expect(mockSetView).not.toHaveBeenCalled();
+  });
 });
