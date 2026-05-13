@@ -32,6 +32,32 @@ export const codeFromFeatureId = (featureId: string | number): string => {
 };
 
 /**
+ * Returns the camera options to center the map on the given location after a
+ * dropdown or programmatic selection.
+ *
+ * Rationale: `Location.center` is populated at build time by `getProjectByName`
+ * — either from manual `center_lat`/`center_lng` spreadsheet columns or from
+ * `computeCentroid` applied to the GeoJSON source (URL or inline string).
+ * Both paths produce `{ lat, lng }` so the swap to `[lng, lat]` (GeoJSON /
+ * geovis convention) is always the same.
+ *
+ * Returns `null` when `location.center` is absent (e.g. mock data without
+ * centroid enrichment or a network failure at build time). The caller must
+ * check for `null` and skip the `setView` call.
+ */
+export const cameraForSelection = (
+  location: Location
+): SetViewOptions | null => {
+  if (!location.center) {
+    return null;
+  }
+  return {
+    center: [location.center.lng, location.center.lat] as [number, number],
+    animate: true,
+  };
+};
+
+/**
  * Returns the camera options to restore the map view when the user deselects
  * a location (clears `selectedLocationCode`).
  *
@@ -54,26 +80,68 @@ export const cameraForDeselection = (region: Region): SetViewOptions => {
   };
 };
 
+type PolygonGeometry = {
+  type: 'Polygon';
+  coordinates: number[][][];
+};
+
+type MultiPolygonGeometry = {
+  type: 'MultiPolygon';
+  coordinates: number[][][][];
+};
+
+type AnyGeometry = PolygonGeometry | MultiPolygonGeometry | { type: string };
+
 /**
- * Returns the camera options to center the map on a location selected from
- * the UI (e.g. the location select dropdown).
+ * Computes the centroid of a polygon or multi-polygon feature using bbox
+ * midpoint arithmetic — no external dependency required.
  *
- * Returns `null` when the location has no `center` — in that case the caller
- * must not call `setView`, preserving the current camera position.
+ * Rationale: Turf.js would add ~60 KB to the bundle. A bbox midpoint is
+ * sufficient for centering a map on a district-level feature; the visual
+ * result is indistinguishable from a true centroid for compact polygons.
  *
- * Coordinate convention: same swap as `cameraForDeselection` — geovis uses
- * `[lng, lat]` whereas `Location.center` stores `{ lat, lng }`.
+ * Returns null when the geometry is not a Polygon/MultiPolygon (e.g. Point
+ * or LineString sources), leaving the camera unchanged.
  */
-export const cameraForSelection = (
-  location: Location
-): SetViewOptions | null => {
-  if (!location.center) {
+export const featureCentroid = (
+  geometry: AnyGeometry
+): [number, number] | null => {
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+
+  const processRing = (ring: number[][]): void => {
+    for (const [lng, lat] of ring) {
+      if (lng < minLng) {
+        minLng = lng;
+      }
+      if (lng > maxLng) {
+        maxLng = lng;
+      }
+      if (lat < minLat) {
+        minLat = lat;
+      }
+      if (lat > maxLat) {
+        maxLat = lat;
+      }
+    }
+  };
+
+  if (geometry.type === 'Polygon') {
+    (geometry as PolygonGeometry).coordinates.forEach(processRing);
+  } else if (geometry.type === 'MultiPolygon') {
+    (geometry as MultiPolygonGeometry).coordinates.forEach((poly) => {
+      return poly.forEach(processRing);
+    });
+  } else {
     return null;
   }
-  return {
-    center: [location.center.lng, location.center.lat] as [number, number],
-    animate: true,
-  };
+
+  if (!isFinite(minLng)) {
+    return null;
+  }
+  return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
 };
 
 // Re-export MapConfig so consumers can reference the type without a second import.

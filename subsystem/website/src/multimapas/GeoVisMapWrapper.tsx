@@ -155,8 +155,16 @@ const GeoVisMapInner = ({
    * codeFromFeatureId coerces numeric featureIds to string (geovis can emit
    * either type depending on the GeoJSON source feature ids).
    *
-   * Camera movement: all maps (source and siblings) use animate:true so the
-   * user sees a synchronized flyTo across the grid.
+   * Camera movement: when the clicked location has a precomputed centroid
+   * (`location.center`), centering is intentionally deferred to the selection
+   * effect. That effect fires on the next render for ALL maps (source and
+   * siblings) via the shared `selectedLocationCode` prop, producing
+   * a single synchronised flyTo without needing a broadcast here.
+   *
+   * Fallback: when no centroid is available (network failure at build time,
+   * no GeoJSON configured), the click effect falls back to centering on the
+   * exact click point and broadcasting to siblings. The selection effect is
+   * a no-op in this case (cameraForSelection returns null).
    *
    * isUserGestureRef is cleared first: if the user was mid-pan when they
    * clicked, the move handler must not continue re-broadcasting animate:false
@@ -171,15 +179,22 @@ const GeoVisMapInner = ({
   React.useEffect(() => {
     if (clickInfo) {
       isUserGestureRef.current = false;
-      setLocationCodeRef.current(codeFromFeatureId(clickInfo.featureId));
-      isSyncingRef.current = true;
-      setView({ center: clickInfo.lngLat, animate: true });
-      syncCamera?.broadcast(
-        { center: clickInfo.lngLat, animate: true },
-        syncedSetViewRef.current ?? setView
-      );
+      const code = codeFromFeatureId(clickInfo.featureId);
+      setLocationCodeRef.current(code);
+
+      // Only use the click point when no centroid is available.
+      // When location.center exists, the selection effect handles all maps.
+      const location = locationForFeatureId(code, region);
+      if (!location?.center) {
+        isSyncingRef.current = true;
+        setView({ center: clickInfo.lngLat, animate: true });
+        syncCamera?.broadcast(
+          { center: clickInfo.lngLat, animate: true },
+          syncedSetViewRef.current ?? setView
+        );
+      }
     }
-  }, [clickInfo, setView, syncCamera]);
+  }, [clickInfo, setView, syncCamera, region]);
 
   /**
    * Reset the camera to region defaults when the selection is cleared.

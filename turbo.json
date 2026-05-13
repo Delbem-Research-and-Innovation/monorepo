@@ -10,7 +10,8 @@
     "GITLAB_ACCESS_TOKEN",
     "REGISTRY_*",
     "HOSTNAME",
-    "AUTH_TOKEN"
+    "AUTH_TOKEN",
+    "USE_MOCK"
   ],
   "tasks": {
     "lint": {

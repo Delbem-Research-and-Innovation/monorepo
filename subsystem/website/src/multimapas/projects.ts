@@ -14,8 +14,54 @@ import {
 
 const folderId = '1m3zw1BGQCoKHYHhJzD97fVM0xX0-d0Do';
 
+const asFeatureCollection = (
+  value: unknown
+): GeoJSON.FeatureCollection | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'object') {
+    const candidate = value as Partial<GeoJSON.FeatureCollection>;
+    if (
+      candidate.type === 'FeatureCollection' &&
+      Array.isArray(candidate.features)
+    ) {
+      return candidate as GeoJSON.FeatureCollection;
+    }
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('{')) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as Partial<GeoJSON.FeatureCollection>;
+      if (
+        parsed.type === 'FeatureCollection' &&
+        Array.isArray(parsed.features)
+      ) {
+        return parsed as GeoJSON.FeatureCollection;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const listAllProjects = async (args: { auth?: any } = {}) => {
+  if (process.env.USE_MOCK === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-use-before-define
+    const mock = require('./mockProject.json') as Project;
+    return [{ id: mock.id, name: mock.name }];
+  }
+
   const auth = args.auth || (await getAuth());
 
   const folders = await listAllFoldersInFolder({
@@ -86,9 +132,79 @@ export type Project = {
   regions: Region[];
 };
 
+/**
+ * Enriches locations that have no manual center with the geometric centroid
+ * computed from the region's GeoJSON source (URL or inline JSON string).
+ *
+ * Mutates `locations` in place. Called at build time from both the real
+ * Sheets path and the mock path so that `location.center` is always
+ * populated before the page is serialised, enabling `cameraForSelection`
+ * to move the map when the user picks a location from the dropdown.
+ *
+ * Failures are silently swallowed — centroid enrichment is best-effort and
+ * must never break the build.
+ */
+// eslint-disable-next-line complexity
+const enrichLocationsWithCentroids = async (
+  mapConfig: MapConfig,
+  locations: Location[]
+): Promise<void> => {
+  try {
+    const inlineGeoJson = asFeatureCollection(mapConfig.geoJsonUrl);
+    const geoJson = inlineGeoJson
+      ? inlineGeoJson
+      : await (async () => {
+          const geoJsonRes = await fetch(String(mapConfig.geoJsonUrl));
+          if (!geoJsonRes.ok) {
+            return null;
+          }
+          return (await geoJsonRes.json()) as GeoJSON.FeatureCollection;
+        })();
+
+    if (geoJson) {
+      const centroidByKey = new Map<string, { lat: number; lng: number }>();
+      for (const feature of geoJson.features ?? []) {
+        const key = String(feature.properties?.[mapConfig.geoJsonKey] ?? '');
+        if (!key || !feature.geometry) {
+          continue;
+        }
+        const centroid = computeCentroid(feature.geometry);
+        if (centroid) {
+          centroidByKey.set(key, centroid);
+        }
+      }
+      for (const loc of locations) {
+        if (!loc.center && centroidByKey.has(loc.code)) {
+          loc.center = centroidByKey.get(loc.code);
+        }
+      }
+    }
+  } catch {
+    // Non-fatal: centroid enrichment is a best-effort enhancement.
+  }
+};
+
+// eslint-disable-next-line max-lines-per-function
 export const getProjectByName = async (
   name: string
 ): Promise<Project | undefined> => {
+  if (process.env.USE_MOCK === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mock = require('./mockProject.json') as Project;
+    if (mock.name !== name) {
+      return undefined;
+    }
+    // Deep clone so that centroid mutation does not bleed into the cached
+    // require() result across multiple getStaticProps calls in the same process.
+    const project = JSON.parse(JSON.stringify(mock)) as Project;
+    await Promise.all(
+      project.regions.map((region) => {
+        return enrichLocationsWithCentroids(region.mapConfig, region.locations);
+      })
+    );
+    return project;
+  }
+
   const auth = await getAuth();
 
   const projects = await listAllProjects({ auth });
@@ -213,6 +329,7 @@ export const getProjectByName = async (
       }) || [];
 
   const regions = await Promise.all(
+    // eslint-disable-next-line max-lines-per-function
     projectDataSheetTabs.map(async (tabName) => {
       const values = await sheets.spreadsheets.values.get({
         auth,
@@ -272,42 +389,7 @@ export const getProjectByName = async (
         return loc;
       });
 
-      /**
-       * Enrich locations that have no manual center with the geometric centroid
-       * computed from the GeoJSON source. The fetch runs once per region at
-       * build time (getStaticProps) so there is no runtime cost.
-       *
-       * Failures (network error, malformed GeoJSON) are silently swallowed so
-       * they do not break the build — the map will simply not auto-center for
-       * those locations.
-       */
-      try {
-        const geoJsonRes = await fetch(mapConfig.geoJsonUrl);
-        if (geoJsonRes.ok) {
-          const geoJson =
-            (await geoJsonRes.json()) as GeoJSON.FeatureCollection;
-          const centroidByKey = new Map<string, { lat: number; lng: number }>();
-          for (const feature of geoJson.features ?? []) {
-            const key = String(
-              feature.properties?.[mapConfig.geoJsonKey] ?? ''
-            );
-            if (!key || !feature.geometry) {
-              continue;
-            }
-            const centroid = computeCentroid(feature.geometry);
-            if (centroid) {
-              centroidByKey.set(key, centroid);
-            }
-          }
-          for (const loc of locations) {
-            if (!loc.center && centroidByKey.has(loc.code)) {
-              loc.center = centroidByKey.get(loc.code);
-            }
-          }
-        }
-      } catch {
-        // Non-fatal: centroid enrichment is a best-effort enhancement.
-      }
+      await enrichLocationsWithCentroids(mapConfig, locations);
 
       const variables = await Promise.all(
         variableColumns.map(async ({ name: variableName, col }) => {
@@ -333,6 +415,7 @@ export const getProjectByName = async (
              * dictionary an entry like "population 2020" or "population-2020".
              */
             const variableNameWithTabName = Object.keys(dictionary || {}).find(
+              // eslint-disable-next-line max-nested-callbacks
               (key) => {
                 return key.startsWith(variableName) && key.endsWith(tabName);
               }
