@@ -9,23 +9,23 @@
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
-    "@tanstack/react-query": "^5.55.4",
-    "@ttoss/google-maps": "^2.1.6",
-    "@ttoss/react-icons": "^0.4.9",
-    "@ttoss/theme": "^2.5.0",
-    "@ttoss/ui": "^5.5.0",
-    "googleapis": "^144.0.0",
-    "next": "15.1.6",
-    "openai": "^4.93.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@tanstack/react-query": "^5.100.10",
+    "@ttoss/google-maps": "^2.3.10",
+    "@ttoss/react-icons": "^0.7.10",
+    "@ttoss/theme": "^2.11.16",
+    "@ttoss/ui": "^6.9.16",
+    "googleapis": "^171.4.0",
+    "next": "16.2.6",
+    "openai": "^6.37.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   },
   "devDependencies": {
-    "@ttoss/eslint-config": "^1.26.0",
-    "@types/google.maps": "^3.58.1",
+    "@ttoss/eslint-config": "^1.27.0",
+    "@types/google.maps": "^3.64.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "~5.8.3"
+    "typescript": "~5.9.3"
   }
 }

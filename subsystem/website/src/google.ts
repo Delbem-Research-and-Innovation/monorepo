@@ -15,7 +15,7 @@ const SCOPES = [
 export const getAuth = async () => {
   const auth = new google.auth.GoogleAuth({
     scopes: SCOPES,
-    keyFile: path.join(process.cwd(), 'simple4decision-f90a46b9bcbc.json'),
+    keyFile: path.join(process.cwd(), 'simple4decision-ff5d296826c0.json'),
   });
 
   return auth.getClient() as Promise<any>;

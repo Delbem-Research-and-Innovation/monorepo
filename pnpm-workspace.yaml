@@ -9,3 +9,7 @@ packages:
   - subsystem/postgresdb
   - subsystem/website
   - subsystem/website-polygons
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
