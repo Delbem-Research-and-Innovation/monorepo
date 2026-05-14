@@ -56,7 +56,7 @@ export const getStaticProps: GetStaticProps<{
       return { notFound: true };
     }
 
-    return { props: { project } };
+    return { props: { project }, revalidate: 3600 };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching project:', error);
