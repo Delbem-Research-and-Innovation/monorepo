@@ -10,7 +10,7 @@ import {
   Stack,
   Text,
 } from '@ttoss/ui';
-import {
+import type {
   GetStaticPaths,
   GetStaticProps,
   type InferGetStaticPropsType,
@@ -155,12 +155,13 @@ const Selector = (
             value={props.value.mapHeight}
             isSearchable={false}
             options={[
-              { value: 700, label: '700px' },
-              { value: 800, label: '800px' },
-              { value: 900, label: '900px' },
               { value: 1000, label: '1000px' },
               { value: 1100, label: '1100px' },
               { value: 1200, label: '1200px' },
+              { value: 1300, label: '1300px' },
+              { value: 1400, label: '1400px' },
+              { value: 1500, label: '1500px' },
+              { value: 1600, label: '1600px' },
             ]}
             onChange={(value) => {
               if (value) {
@@ -337,7 +338,7 @@ const Insights = (
 const Page = (props: Props) => {
   const [selectorValues, setSelectorValues] = React.useState<SelectorValues>({
     tabName: props.project.regions[0].name,
-    mapHeight: 800,
+    mapHeight: 1200,
   });
 
   const setLocationCode = React.useCallback((locationCode: string) => {
