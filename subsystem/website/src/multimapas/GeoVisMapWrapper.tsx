@@ -7,6 +7,7 @@ import {
   useGeoVis,
   useGeoVisClick,
 } from '@ttoss/geovis';
+import { Text } from '@ttoss/ui';
 import * as React from 'react';
 
 import {
@@ -17,6 +18,7 @@ import {
 } from './GeoVisMapWrapper.helpers';
 import type { Region, Variable } from './projects';
 import { useSyncCamera } from './SyncCameraContext';
+import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
  * Minimal interface for the MapLibre map instance returned by
@@ -28,7 +30,6 @@ type NativeMap = {
   getCenter: () => { lng: number; lat: number };
   getZoom: () => number;
 };
-import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
  * Render prop for GeoVisHoverTooltip.
@@ -68,23 +69,25 @@ export type GeoVisMapWrapperProps = {
 
 export const MapLabel = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div
-      style={{
+    <Text
+      as="div"
+      sx={{
         position: 'absolute',
-        top: 10,
-        left: 10,
+        top: '10px',
+        left: '10px',
         background: 'rgba(255,255,255,0.88)',
-        borderRadius: 6,
+        borderRadius: '6px',
         padding: '4px 10px',
-        fontSize: 12,
-        fontWeight: 600,
+        // fontSize: '1rem',
+        fontFamily: 'body',
+        fontWeight: 'semibold',
         color: '#374151',
         zIndex: 1,
         pointerEvents: 'none',
       }}
     >
       {children}
-    </div>
+    </Text>
   );
 };
 
@@ -123,9 +126,11 @@ const GeoVisMapInner = ({
    *   leave isSyncingRef permanently stuck as true.
    */
   const setLocationCodeRef = React.useRef(setLocationCode);
-  setLocationCodeRef.current = setLocationCode;
   const setViewRef = React.useRef(setView);
-  setViewRef.current = setView;
+  React.useLayoutEffect(() => {
+    setLocationCodeRef.current = setLocationCode;
+    setViewRef.current = setView;
+  });
 
   /**
    * Register a wrapped setView so incoming broadcasts:
