@@ -7,7 +7,7 @@ import {
   useGeoVis,
   useGeoVisClick,
 } from '@ttoss/geovis';
-import { Text } from '@ttoss/ui';
+import { Box, Text } from '@ttoss/ui';
 import * as React from 'react';
 
 import {
@@ -78,15 +78,16 @@ export const MapLabel = ({ children }: { children: React.ReactNode }) => {
         position: 'absolute',
         top: '10px',
         left: '10px',
-        background: 'rgba(255,255,255,0.88)',
-        borderRadius: '6px',
+        bg: 'display.background.primary.default',
+        borderRadius: 'md',
         padding: '4px 10px',
         // fontSize: '1rem',
         fontFamily: 'body',
         fontWeight: 'semibold',
-        color: '#374151',
+        color: 'display.text.primary.default',
         zIndex: 1,
         pointerEvents: 'none',
+        opacity: 0.9,
       }}
     >
       {children}
@@ -333,17 +334,27 @@ const GeoVisMapInner = ({
         height: '100%',
         position: 'relative',
         paddingBottom: '8px',
+        backgroundColor: 'white',
       }}
     >
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <GeoVisCanvas
-          style={{ position: 'absolute', width: '100%', height: '100%' }}
-        />
+      <Box
+        sx={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          bg: 'display.background.muted.default',
+        }}
+      >
+        <GeoVisCanvas />
         <MapLabel>{variable.name}</MapLabel>
         <GeoVisHoverTooltip render={hoverRenderer} />
-      </div>
+      </Box>
 
-      {legendId && <GeoVisLegend legendId={legendId} />}
+      {legendId && (
+        <div style={{ paddingLeft: '10px' }}>
+          <GeoVisLegend legendId={legendId} />
+        </div>
+      )}
     </div>
   );
 };

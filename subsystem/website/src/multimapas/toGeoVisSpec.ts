@@ -83,6 +83,7 @@ export const toGeoVisSpec = (
       }),
       ...(mapConfig.zoom != null && { zoom: mapConfig.zoom }),
     },
+    basemap: { visible: false },
     sources: [
       {
         id: sourceId,
