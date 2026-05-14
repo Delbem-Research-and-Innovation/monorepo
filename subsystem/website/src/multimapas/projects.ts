@@ -4,6 +4,7 @@ import {
   listAllSheetsInFolder,
   sheets,
 } from '../google';
+import { computeCentroid } from './geometry';
 import {
   type Caption,
   getPolygonsOptionsForCategoricalValues,
@@ -13,8 +14,54 @@ import {
 
 const folderId = '1m3zw1BGQCoKHYHhJzD97fVM0xX0-d0Do';
 
+const asFeatureCollection = (
+  value: unknown
+): GeoJSON.FeatureCollection | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'object') {
+    const candidate = value as Partial<GeoJSON.FeatureCollection>;
+    if (
+      candidate.type === 'FeatureCollection' &&
+      Array.isArray(candidate.features)
+    ) {
+      return candidate as GeoJSON.FeatureCollection;
+    }
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('{')) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as Partial<GeoJSON.FeatureCollection>;
+      if (
+        parsed.type === 'FeatureCollection' &&
+        Array.isArray(parsed.features)
+      ) {
+        return parsed as GeoJSON.FeatureCollection;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const listAllProjects = async (args: { auth?: any } = {}) => {
+  if (process.env.USE_MOCK === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-use-before-define
+    const mock = require('./mockProject.json') as Project;
+    return [{ id: mock.id, name: mock.name }];
+  }
+
   const auth = args.auth || (await getAuth());
 
   const folders = await listAllFoldersInFolder({
@@ -35,6 +82,8 @@ export type { Caption, PolygonsOptions };
 export type Location = {
   code: string;
   name: string;
+  /** Geographic centroid of the location, used to center the map when selected. */
+  center?: { lat: number; lng: number };
 };
 
 export type MapConfig = {
@@ -83,9 +132,79 @@ export type Project = {
   regions: Region[];
 };
 
+/**
+ * Enriches locations that have no manual center with the geometric centroid
+ * computed from the region's GeoJSON source (URL or inline JSON string).
+ *
+ * Mutates `locations` in place. Called at build time from both the real
+ * Sheets path and the mock path so that `location.center` is always
+ * populated before the page is serialised, enabling `cameraForSelection`
+ * to move the map when the user picks a location from the dropdown.
+ *
+ * Failures are silently swallowed — centroid enrichment is best-effort and
+ * must never break the build.
+ */
+// eslint-disable-next-line complexity
+const enrichLocationsWithCentroids = async (
+  mapConfig: MapConfig,
+  locations: Location[]
+): Promise<void> => {
+  try {
+    const inlineGeoJson = asFeatureCollection(mapConfig.geoJsonUrl);
+    const geoJson = inlineGeoJson
+      ? inlineGeoJson
+      : await (async () => {
+          const geoJsonRes = await fetch(String(mapConfig.geoJsonUrl));
+          if (!geoJsonRes.ok) {
+            return null;
+          }
+          return (await geoJsonRes.json()) as GeoJSON.FeatureCollection;
+        })();
+
+    if (geoJson) {
+      const centroidByKey = new Map<string, { lat: number; lng: number }>();
+      for (const feature of geoJson.features ?? []) {
+        const key = String(feature.properties?.[mapConfig.geoJsonKey] ?? '');
+        if (!key || !feature.geometry) {
+          continue;
+        }
+        const centroid = computeCentroid(feature.geometry);
+        if (centroid) {
+          centroidByKey.set(key, centroid);
+        }
+      }
+      for (const loc of locations) {
+        if (!loc.center && centroidByKey.has(loc.code)) {
+          loc.center = centroidByKey.get(loc.code);
+        }
+      }
+    }
+  } catch {
+    // Non-fatal: centroid enrichment is a best-effort enhancement.
+  }
+};
+
+// eslint-disable-next-line max-lines-per-function
 export const getProjectByName = async (
   name: string
 ): Promise<Project | undefined> => {
+  if (process.env.USE_MOCK === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mock = require('./mockProject.json') as Project;
+    if (mock.name !== name) {
+      return undefined;
+    }
+    // Deep clone so that centroid mutation does not bleed into the cached
+    // require() result across multiple getStaticProps calls in the same process.
+    const project = JSON.parse(JSON.stringify(mock)) as Project;
+    await Promise.all(
+      project.regions.map((region) => {
+        return enrichLocationsWithCentroids(region.mapConfig, region.locations);
+      })
+    );
+    return project;
+  }
+
   const auth = await getAuth();
 
   const projects = await listAllProjects({ auth });
@@ -210,6 +329,7 @@ export const getProjectByName = async (
       }) || [];
 
   const regions = await Promise.all(
+    // eslint-disable-next-line max-lines-per-function
     projectDataSheetTabs.map(async (tabName) => {
       const values = await sheets.spreadsheets.values.get({
         auth,
@@ -236,25 +356,56 @@ export const getProjectByName = async (
         },
       };
 
-      const [, , ...variablesNames] = headers as string[];
+      const allHeaders = headers as string[];
+
+      // Identify special coordinate columns (optional; absent = no centering per location).
+      const CENTER_LAT_HEADER = 'center_lat';
+      const CENTER_LNG_HEADER = 'center_lng';
+      const centerLatCol = allHeaders.indexOf(CENTER_LAT_HEADER);
+      const centerLngCol = allHeaders.indexOf(CENTER_LNG_HEADER);
+
+      // Build variable column entries from headers[2+], skipping the special columns.
+      const variableColumns = allHeaders
+        .slice(2)
+        .reduce<Array<{ name: string; col: number }>>((acc, name, i) => {
+          if (name !== CENTER_LAT_HEADER && name !== CENTER_LNG_HEADER) {
+            acc.push({ name, col: i + 2 });
+          }
+          return acc;
+        }, []);
 
       const locations = data.map((row) => {
-        return {
+        const loc: Location = {
           code: String(row[0]),
           name: row[1] || 'NOME NÃO INFORMADO',
         };
+        if (centerLatCol !== -1 && centerLngCol !== -1) {
+          const rawLat = row[centerLatCol];
+          const rawLng = row[centerLngCol];
+          // Guard: Number('') === 0 (truthy-looking but wrong); only coerce
+          // non-empty, non-null cell values so blank spreadsheet cells are
+          // not misinterpreted as the origin (0, 0).
+          const lat = rawLat !== '' && rawLat != null ? Number(rawLat) : NaN;
+          const lng = rawLng !== '' && rawLng != null ? Number(rawLng) : NaN;
+          if (!isNaN(lat) && !isNaN(lng)) {
+            loc.center = { lat, lng };
+          }
+        }
+        return loc;
       });
 
+      await enrichLocationsWithCentroids(mapConfig, locations);
+
       const variables = await Promise.all(
-        variablesNames.map(async (variableName, index) => {
+        variableColumns.map(async ({ name: variableName, col }) => {
           const variableData = Object.fromEntries(
             data
               .filter((row) => {
-                const cell = row[index + 2];
+                const cell = row[col];
                 return cell !== undefined && cell !== null && cell !== '';
               })
               .map((row) => {
-                return [row[0], row[index + 2]];
+                return [row[0], row[col]];
               })
           ) as Record<string, number | string>;
 
@@ -269,6 +420,7 @@ export const getProjectByName = async (
              * dictionary an entry like "population 2020" or "population-2020".
              */
             const variableNameWithTabName = Object.keys(dictionary || {}).find(
+              // eslint-disable-next-line max-nested-callbacks
               (key) => {
                 return key.startsWith(variableName) && key.endsWith(tabName);
               }

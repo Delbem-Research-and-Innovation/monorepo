@@ -2,30 +2,42 @@
   "private": true,
   "name": "@simple4decision/website",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest --projects tests/unit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@tanstack/react-query": "^5.55.4",
+    "@ttoss/geovis": "^0.1.9",
     "@ttoss/google-maps": "^2.1.6",
     "@ttoss/react-icons": "^0.4.9",
     "@ttoss/theme": "^2.5.0",
     "@ttoss/ui": "^5.5.0",
     "googleapis": "^144.0.0",
+    "maplibre-gl": "^5.24.0",
     "next": "15.1.6",
     "openai": "^4.93.0",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.2",
+    "@ttoss/config": "^1.35.2",
     "@ttoss/eslint-config": "^1.26.0",
     "@types/google.maps": "^3.58.1",
+    "@types/jest": "^29.5.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-plugin-transform-import-meta": "^2.2.1",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "typescript": "~5.8.3"
   }
 }
