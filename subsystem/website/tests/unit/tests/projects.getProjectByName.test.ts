@@ -145,6 +145,10 @@ beforeAll(() => {
 // ---------------------------------------------------------------------------
 
 describe('getProjectByName — inline GeoJSON in geoJsonUrl', () => {
+  beforeEach(() => {
+    fetchMock.mockClear();
+  });
+
   /**
    * Case 1 — Happy path (currently FAILS).
    *
@@ -274,6 +278,7 @@ describe('getProjectByName — URL GeoJSON centroid enrichment', () => {
   };
 
   beforeEach(() => {
+    fetchMock.mockClear();
     // For URL tests, fetch should succeed and return the FeatureCollection.
     fetchMock.mockResolvedValue({
       ok: true,
@@ -391,6 +396,7 @@ describe('getProjectByName — USE_MOCK path centroid enrichment', () => {
   };
 
   beforeEach(() => {
+    fetchMock.mockClear();
     process.env.USE_MOCK = 'true';
     fetchMock.mockResolvedValue({
       ok: true,
