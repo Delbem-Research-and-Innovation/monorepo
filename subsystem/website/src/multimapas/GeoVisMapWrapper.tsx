@@ -1,15 +1,4 @@
 import type { MapHoverInfo } from '@ttoss/geovis';
-
-/**
- * Minimal interface for the MapLibre map instance returned by
- * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
- */
-type NativeMap = {
-  on: (event: string, handler: () => void) => void;
-  off: (event: string, handler: () => void) => void;
-  getCenter: () => { lng: number; lat: number };
-  getZoom: () => number;
-};
 import {
   GeoVisCanvas,
   GeoVisHoverTooltip,
@@ -28,6 +17,17 @@ import {
 } from './GeoVisMapWrapper.helpers';
 import type { Region, Variable } from './projects';
 import { useSyncCamera } from './SyncCameraContext';
+
+/**
+ * Minimal interface for the MapLibre map instance returned by
+ * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
+ */
+type NativeMap = {
+  on: (event: string, handler: () => void) => void;
+  off: (event: string, handler: () => void) => void;
+  getCenter: () => { lng: number; lat: number };
+  getZoom: () => number;
+};
 import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
