@@ -23,7 +23,7 @@ const toSlug = (str: string): string => {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/^-+|-+$/g, '');
 };
 
 const buildColorBy = (captions: Variable['captions']): ColorBy => {
