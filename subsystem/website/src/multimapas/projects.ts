@@ -380,8 +380,13 @@ export const getProjectByName = async (
           name: row[1] || 'NOME NÃO INFORMADO',
         };
         if (centerLatCol !== -1 && centerLngCol !== -1) {
-          const lat = Number(row[centerLatCol]);
-          const lng = Number(row[centerLngCol]);
+          const rawLat = row[centerLatCol];
+          const rawLng = row[centerLngCol];
+          // Guard: Number('') === 0 (truthy-looking but wrong); only coerce
+          // non-empty, non-null cell values so blank spreadsheet cells are
+          // not misinterpreted as the origin (0, 0).
+          const lat = rawLat !== '' && rawLat != null ? Number(rawLat) : NaN;
+          const lng = rawLng !== '' && rawLng != null ? Number(rawLng) : NaN;
           if (!isNaN(lat) && !isNaN(lng)) {
             loc.center = { lat, lng };
           }
