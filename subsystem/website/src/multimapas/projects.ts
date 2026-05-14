@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+
 import {
   getAuth,
   listAllFoldersInFolder,
@@ -54,21 +56,32 @@ const asFeatureCollection = (
   return null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const listAllProjects = async (args: { auth?: any } = {}) => {
-  const auth = args.auth || (await getAuth());
-
-  const folders = await listAllFoldersInFolder({
-    auth,
-    folderId,
-  });
-
+const _fetchProjectsList = async (): Promise<
+  Array<{ id: string; name: string }>
+> => {
+  const auth = await getAuth();
+  const folders = await listAllFoldersInFolder({ auth, folderId });
   return folders.map((folder) => {
-    return {
-      id: folder.id,
-      name: folder.name,
-    };
+    return { id: folder.id, name: folder.name };
   });
+};
+
+/**
+ * Caches the Drive folder listing for 1 hour so that repeated calls within
+ * the same ISR regeneration cycle (getStaticPaths + N×getStaticProps) only
+ * hit the Google Drive API once.
+ */
+const getCachedProjectsList = unstable_cache(
+  _fetchProjectsList,
+  ['projects-list'],
+  {
+    revalidate: 3600,
+  }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const listAllProjects = async (_args: { auth?: any } = {}) => {
+  return getCachedProjectsList();
 };
 
 export type { Caption, PolygonsOptions };
@@ -138,7 +151,24 @@ export type Project = {
  * Failures are silently swallowed — centroid enrichment is best-effort and
  * must never break the build.
  */
-// eslint-disable-next-line complexity
+const buildCentroidMap = (
+  features: GeoJSON.Feature[],
+  geoJsonKey: string
+): Map<string, { lat: number; lng: number }> => {
+  const centroidByKey = new Map<string, { lat: number; lng: number }>();
+  for (const feature of features) {
+    const key = String(feature.properties?.[geoJsonKey] ?? '');
+    if (!key || !feature.geometry) {
+      continue;
+    }
+    const centroid = computeCentroid(feature.geometry);
+    if (centroid) {
+      centroidByKey.set(key, centroid);
+    }
+  }
+  return centroidByKey;
+};
+
 const enrichLocationsWithCentroids = async (
   mapConfig: MapConfig,
   locations: Location[]
@@ -156,17 +186,10 @@ const enrichLocationsWithCentroids = async (
         })();
 
     if (geoJson) {
-      const centroidByKey = new Map<string, { lat: number; lng: number }>();
-      for (const feature of geoJson.features ?? []) {
-        const key = String(feature.properties?.[mapConfig.geoJsonKey] ?? '');
-        if (!key || !feature.geometry) {
-          continue;
-        }
-        const centroid = computeCentroid(feature.geometry);
-        if (centroid) {
-          centroidByKey.set(key, centroid);
-        }
-      }
+      const centroidByKey = buildCentroidMap(
+        geoJson.features ?? [],
+        mapConfig.geoJsonKey
+      );
       for (const loc of locations) {
         if (!loc.center && centroidByKey.has(loc.code)) {
           loc.center = centroidByKey.get(loc.code);
