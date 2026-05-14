@@ -18,13 +18,14 @@
     "husky": "^9.1.7",
     "lint-staged": "15.4.3",
     "prettier": "^3.5.0",
+    "prettier-package-json": "^2.8.0",
     "turbo": "^2.4.1",
     "typescript": "~5.8.3"
   },
   "keywords": [],
   "engines": {
-    "node": "^22.0.0",
-    "pnpm": "^10.0.0"
+    "node": "^24.0.0",
+    "pnpm": "^11.0.0"
   },
   "packageManager": "pnpm@10.0.0+sha256.43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948"
 }
