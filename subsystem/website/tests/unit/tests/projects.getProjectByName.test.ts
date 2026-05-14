@@ -1,16 +1,9 @@
 /**
  * Regression tests for getProjectByName — inline GeoJSON in geoJsonUrl field.
  *
- * Bug (not yet fixed): the centroid-enrichment block in projects.ts
- * unconditionally calls `fetch(mapConfig.geoJsonUrl)`. When the spreadsheet
- * cell contains a raw JSON string (a FeatureCollection serialised as text)
- * instead of a URL, `fetch()` throws a TypeError because the value is not a
- * valid URL. The catch block silently swallows the error, leaving
- * `location.center` as undefined.
- *
- * Expected post-fix behaviour: when `geoJsonUrl` is a valid JSON string, the
- * code should detect it, parse it directly (without a network call), and
- * populate `location.center` from `computeCentroid`.
+ * When `geoJsonUrl` is a valid JSON string, the code now detects it,
+ * parses it directly (without a network call), and populates `location.center`
+ * from `computeCentroid`.
  *
  * Test strategy (3 cases):
  *  1. Happy path  — inline FeatureCollection Polygon → location.center populated.
@@ -120,8 +113,15 @@ const makeSheetValues = (geoJsonUrl: string) => {
 // ---------------------------------------------------------------------------
 
 let fetchMock: jest.Mock;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let originalFetch: any;
 
 beforeAll(() => {
+  // Snapshot the original fetch before overwriting so we can restore it in
+  // afterAll and prevent leaking the mock into other test files.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  originalFetch = (global as any).fetch;
+
   // Replace global fetch so any call is intercepted and will reject.
   // This makes Case 2 detectable (call count) without triggering real network.
   fetchMock = jest
@@ -140,6 +140,12 @@ beforeAll(() => {
   });
 });
 
+afterAll(() => {
+  // Restore the original fetch to prevent leaking the mock into other suites.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (global as any).fetch = originalFetch;
+});
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -150,13 +156,10 @@ describe('getProjectByName — inline GeoJSON in geoJsonUrl', () => {
   });
 
   /**
-   * Case 1 — Happy path (currently FAILS).
+   * Case 1 — Happy path.
    *
    * When geoJsonUrl contains an inline JSON string, getProjectByName should
    * parse it directly and populate location.center from computeCentroid.
-   *
-   * Current behaviour: fetch(jsonString) throws, catch swallows it,
-   * location.center remains undefined → assertion fails.
    */
   test('Case 1 (happy path): location.center populated from inline FeatureCollection centroid', async () => {
     (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValueOnce(
@@ -169,24 +172,17 @@ describe('getProjectByName — inline GeoJSON in geoJsonUrl', () => {
     const location = project!.regions[0].locations[0];
     expect(location.code).toBe('A001');
 
-    // FAILS in current code: location.center is undefined because
-    // fetch(jsonString) throws and the catch block silently swallows the error.
     expect(location.center).toBeDefined();
     expect(location.center!.lat).toBeCloseTo(1, 5);
     expect(location.center!.lng).toBeCloseTo(1, 5);
   });
 
   /**
-   * Case 2 — No fetch call (currently FAILS).
+   * Case 2 — No fetch call.
    *
    * When geoJsonUrl is parseable as JSON, the code should never reach fetch().
-   *
-   * Current behaviour: fetch() IS called (mock.calls.length === 1),
-   * so the assertion fails — confirming the code paths through fetch
-   * regardless of whether the value is a URL or inline JSON.
-   *
-   * clearMocks: true clears fetchMock.mock.calls before each test, so
-   * this assertion is independent of Case 1.
+   * `beforeEach` clears fetchMock.mock.calls before each test, so this
+   * assertion is independent of Case 1.
    */
   test('Case 2: fetch() is never called when geoJsonUrl contains inline JSON', async () => {
     (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValueOnce(
@@ -195,7 +191,6 @@ describe('getProjectByName — inline GeoJSON in geoJsonUrl', () => {
 
     await getProjectByName('TestProject');
 
-    // FAILS in current code: fetch was called once with the inline JSON string.
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
