@@ -1,4 +1,4 @@
-import type { ColorBy, VisualizationSpec } from '@ttoss/geovis';
+import type { ColorBy, GeoJSONObject, VisualizationSpec } from '@ttoss/geovis';
 
 import type { Region, Variable } from './projects';
 
@@ -57,7 +57,8 @@ const buildColorBy = (captions: Variable['captions']): ColorBy => {
 
 export const toGeoVisSpec = (
   region: Region,
-  variable: Variable
+  variable: Variable,
+  geoJsonData?: GeoJSONObject
 ): VisualizationSpec => {
   const { mapConfig } = region;
 
@@ -86,7 +87,7 @@ export const toGeoVisSpec = (
       {
         id: sourceId,
         type: 'geojson',
-        data: mapConfig.geoJsonUrl,
+        data: geoJsonData ?? mapConfig.geoJsonUrl,
       },
     ],
     layers: [

@@ -1,4 +1,4 @@
-import type { MapHoverInfo } from '@ttoss/geovis';
+import type { GeoJSONObject, MapHoverInfo } from '@ttoss/geovis';
 import {
   GeoVisCanvas,
   GeoVisHoverTooltip,
@@ -65,6 +65,9 @@ export type GeoVisMapWrapperProps = {
   variable: Variable;
   selectedLocationCode?: string;
   setLocationCode: (locationCode: string) => void;
+  /** Pre-fetched GeoJSON data. When provided, passed inline to the spec so
+   * MapLibre does not fetch the GeoJSON URL client-side. */
+  geoJsonData?: GeoJSONObject;
 };
 
 export const MapLabel = ({ children }: { children: React.ReactNode }) => {
@@ -359,10 +362,11 @@ export const GeoVisMapWrapper = ({
   variable,
   selectedLocationCode,
   setLocationCode,
+  geoJsonData,
 }: GeoVisMapWrapperProps) => {
   const spec = React.useMemo(() => {
-    return toGeoVisSpec(region, variable);
-  }, [region, variable]);
+    return toGeoVisSpec(region, variable, geoJsonData);
+  }, [region, variable, geoJsonData]);
 
   const legendId = spec.legends?.[0]?.id;
 

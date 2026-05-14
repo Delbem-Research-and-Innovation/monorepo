@@ -351,6 +351,28 @@ const Page = (props: Props) => {
     return region.name === selectorValues.tabName;
   });
 
+  const geoJsonUrl = region?.mapConfig.geoJsonUrl;
+
+  /**
+   * Pre-fetch the GeoJSON for the active region once and share the result
+   * across all maps. staleTime: Infinity means it is never re-fetched within
+   * the same browser session (the same GeoJSON file is reused for all 5
+   * variables). Maps are only rendered after data is available so MapLibre
+   * uses the inline object instead of issuing N individual URL fetches.
+   */
+  const { data: geoJsonData, isLoading: isGeoJsonLoading } = useQuery({
+    queryKey: ['geojson', geoJsonUrl],
+    queryFn: async () => {
+      const res = await fetch(geoJsonUrl as string);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch GeoJSON: ${res.status}`);
+      }
+      return res.json();
+    },
+    staleTime: Infinity,
+    enabled: typeof geoJsonUrl === 'string' && geoJsonUrl.startsWith('http'),
+  });
+
   return (
     <Stack sx={{ gap: '8', alignItems: 'flex-start', width: '100%' }}>
       <Heading as="h1">Multimapas</Heading>
@@ -368,26 +390,41 @@ const Page = (props: Props) => {
       />
       {region && (
         <SyncCameraProvider>
-          <Grid
-            sx={{
-              height: `${selectorValues.mapHeight}px`,
-              width: '100%',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '6',
-            }}
-          >
-            {region?.variables.map((variable) => {
-              return (
-                <GeoVisMapWrapper
-                  key={variable.name}
-                  region={region}
-                  variable={variable}
-                  selectedLocationCode={selectorValues.locationCode}
-                  setLocationCode={setLocationCode}
-                />
-              );
-            })}
-          </Grid>
+          {isGeoJsonLoading ? (
+            <Flex
+              sx={{
+                height: `${selectorValues.mapHeight}px`,
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text>Carregando dados do mapa...</Text>
+            </Flex>
+          ) : (
+            <Grid
+              sx={{
+                height: `${selectorValues.mapHeight}px`,
+                width: '100%',
+                gridTemplateColumns: '1fr 1fr',
+                gridAutoRows: '1fr',
+                gap: '6',
+              }}
+            >
+              {region.variables.map((variable) => {
+                return (
+                  <GeoVisMapWrapper
+                    key={variable.name}
+                    region={region}
+                    variable={variable}
+                    selectedLocationCode={selectorValues.locationCode}
+                    setLocationCode={setLocationCode}
+                    geoJsonData={geoJsonData}
+                  />
+                );
+              })}
+            </Grid>
+          )}
         </SyncCameraProvider>
       )}
     </Stack>
