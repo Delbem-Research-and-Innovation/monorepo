@@ -56,12 +56,6 @@ const asFeatureCollection = (
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const listAllProjects = async (args: { auth?: any } = {}) => {
-  if (process.env.USE_MOCK === 'true') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-use-before-define
-    const mock = require('./mockProject.json') as Project;
-    return [{ id: mock.id, name: mock.name }];
-  }
-
   const auth = args.auth || (await getAuth());
 
   const folders = await listAllFoldersInFolder({
@@ -188,23 +182,6 @@ const enrichLocationsWithCentroids = async (
 export const getProjectByName = async (
   name: string
 ): Promise<Project | undefined> => {
-  if (process.env.USE_MOCK === 'true') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mock = require('./mockProject.json') as Project;
-    if (mock.name !== name) {
-      return undefined;
-    }
-    // Deep clone so that centroid mutation does not bleed into the cached
-    // require() result across multiple getStaticProps calls in the same process.
-    const project = JSON.parse(JSON.stringify(mock)) as Project;
-    await Promise.all(
-      project.regions.map((region) => {
-        return enrichLocationsWithCentroids(region.mapConfig, region.locations);
-      })
-    );
-    return project;
-  }
-
   const auth = await getAuth();
 
   const projects = await listAllProjects({ auth });
