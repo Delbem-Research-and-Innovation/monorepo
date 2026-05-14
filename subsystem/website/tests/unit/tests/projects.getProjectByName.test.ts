@@ -22,8 +22,6 @@
  *   [4] data row  = ['A001', 'Location A']
  */
 
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { sheets } from 'src/google';
 import { getProjectByName } from 'src/multimapas/projects';
 

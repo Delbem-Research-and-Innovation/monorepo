@@ -8,7 +8,7 @@
 import { act, render } from '@testing-library/react';
 import type { MapClickInfo } from '@ttoss/geovis';
 import { useGeoVis, useGeoVisClick, useGeoVisHover } from '@ttoss/geovis';
-import * as React from 'react';
+import type * as React from 'react';
 import { GeoVisMapWrapper } from 'src/multimapas/GeoVisMapWrapper';
 import { SyncCameraProvider } from 'src/multimapas/SyncCameraProvider';
 

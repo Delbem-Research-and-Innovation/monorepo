@@ -38,11 +38,11 @@ export const SyncCameraProvider = ({
       options: SetViewOptions,
       source: (options: SetViewOptions) => void
     ) => {
-      listenersRef.current.forEach((fn) => {
+      for (const fn of listenersRef.current) {
         if (fn !== source) {
           fn(options);
         }
-      });
+      }
     };
 
     return { register, broadcast };

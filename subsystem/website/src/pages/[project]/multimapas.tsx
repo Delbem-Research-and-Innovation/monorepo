@@ -13,7 +13,7 @@ import {
 import type {
   GetStaticPaths,
   GetStaticProps,
-  type InferGetStaticPropsType,
+  InferGetStaticPropsType,
 } from 'next';
 import { useSearchParams } from 'next/navigation';
 import * as React from 'react';
@@ -192,7 +192,7 @@ const Insights = (
 
   const showPrompt = searchParams.get('show-prompt') === 'true';
 
-  const [wasLocationCodeSet, setWasLocationCodeSet] = React.useState(false);
+  const wasLocationCodeSet = React.useRef(false);
 
   const { data, isFetching, isError, refetch } = useQuery({
     enabled: false,
@@ -220,7 +220,7 @@ const Insights = (
       return;
     }
 
-    if (wasLocationCodeSet) {
+    if (wasLocationCodeSet.current) {
       return;
     }
 
@@ -229,8 +229,8 @@ const Insights = (
     }
 
     setLocationCode(data.locationCode);
-    setWasLocationCodeSet(true);
-  }, [data?.locationCode, setLocationCode, wasLocationCodeSet, isFetching]);
+    wasLocationCodeSet.current = true;
+  }, [data?.locationCode, setLocationCode, isFetching]);
 
   if (!isAlexandreAiEnabled) {
     return null;
