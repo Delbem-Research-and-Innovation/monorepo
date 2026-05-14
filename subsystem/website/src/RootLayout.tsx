@@ -1,13 +1,22 @@
-import { Flex, Stack, Text } from '@ttoss/ui';
-import * as React from 'react';
+import { Flex, Global, Stack, Text } from '@ttoss/ui';
+import type * as React from 'react';
 
 export const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <Stack sx={{ width: 'full' }}>
+      {/*
+       * This Global rule restores the expected heading sizes and weights.
+       */}
+      <Global
+        styles={{
+          h1: { fontSize: '2rem', fontWeight: 'bold' },
+          h2: { fontSize: '1.5rem', fontWeight: 'bold' },
+        }}
+      />
       <Flex
         as="header"
         sx={{
-          backgroundColor: 'display.background.primary.default',
+          backgroundColor: 'display.background.primary.active',
           paddingX: '12',
           paddingY: '8',
           width: 'full',
@@ -35,7 +44,7 @@ export const RootLayout = ({ children }: { children: React.ReactNode }) => {
       <Flex
         as="footer"
         sx={{
-          backgroundColor: 'display.background.primary.default',
+          backgroundColor: 'display.background.primary.active',
           paddingX: '12',
           paddingY: '8',
           color: 'white',
