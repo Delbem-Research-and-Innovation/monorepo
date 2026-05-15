@@ -79,8 +79,7 @@ const getCachedProjectsList = unstable_cache(
   }
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const listAllProjects = async (_args: { auth?: any } = {}) => {
+export const listAllProjects = async () => {
   return getCachedProjectsList();
 };
 
@@ -207,7 +206,7 @@ export const getProjectByName = async (
 ): Promise<Project | undefined> => {
   const auth = await getAuth();
 
-  const projects = await listAllProjects({ auth });
+  const projects = await listAllProjects();
 
   const project = projects.find((folder) => {
     return folder.name === name;
