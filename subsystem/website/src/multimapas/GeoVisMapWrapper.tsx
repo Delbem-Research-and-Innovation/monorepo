@@ -2,7 +2,6 @@ import type { GeoJSONObject, MapHoverInfo } from '@ttoss/geovis';
 import {
   GeoVisCanvas,
   GeoVisHoverTooltip,
-  GeoVisLegend,
   GeoVisProvider,
   useGeoVis,
   useGeoVisClick,
@@ -35,11 +34,28 @@ type NativeMap = {
  * Render prop for GeoVisHoverTooltip.
  * Defined at module scope so the function reference is stable across renders
  * (no new identity per render = no spurious tooltip re-mounts).
+ *
+ * Display value mirrors the production `LocationInfo` logic:
+ * - categorical variables: show `caption.name` (the category label)
+ * - numerical variables:   show `caption.value` (the Jenks threshold that
+ *   identifies the bucket the feature belongs to)
+ *
+ * `caption` is resolved from `variable.polygonsOptions[featureId].caption`,
+ * which is computed at build time by `polygons.ts` and already carried in the
+ * page props — no additional computation needed on the client.
  */
-const renderHoverTooltip = (region: Region) => {
+const renderHoverTooltip = (region: Region, variable: Variable) => {
   const tooltipRenderer = (info: MapHoverInfo): React.ReactNode => {
     const location = locationForFeatureId(info.featureId, region);
     const name = location?.name ?? `#${String(info.featureId)}`;
+
+    const caption = variable.polygonsOptions[String(info.featureId)]?.caption;
+    const displayValue = caption
+      ? caption.dataType === 'categorical'
+        ? caption.name
+        : caption.value
+      : null;
+
     return (
       <div
         style={{
@@ -51,8 +67,12 @@ const renderHoverTooltip = (region: Region) => {
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 2 }}>{name}</div>
-        {info.value != null && (
-          <div style={{ color: '#ffffff' }}>{String(info.value)}</div>
+        {displayValue != null && (
+          <div style={{ color: '#ffffff' }}>
+            {typeof displayValue === 'number'
+              ? displayValue.toLocaleString('pt-BR')
+              : String(displayValue)}
+          </div>
         )}
       </div>
     );
@@ -68,6 +88,51 @@ export type GeoVisMapWrapperProps = {
   /** Pre-fetched GeoJSON data. When provided, passed inline to the spec so
    * MapLibre does not fetch the GeoJSON URL client-side. */
   geoJsonData?: GeoJSONObject;
+};
+
+/**
+ * Renders the pre-computed Jenks legend (captions) produced by polygons.ts.
+ * Each caption holds the exact label string and fill colour calculated at
+ * build time, so the legend stays in sync with the choropleth without any
+ * client-side reformatting.
+ */
+const CaptionLegend = ({ captions }: { captions: Variable['captions'] }) => {
+  if (captions.length === 0) {
+    return null;
+  }
+  return (
+    <ul
+      style={{
+        listStyle: 'none',
+        margin: 0,
+        padding: '6px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+      }}
+    >
+      {captions.map((caption) => {
+        return (
+          <li
+            key={caption.name}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 2,
+                background: caption.fillColor,
+                flexShrink: 0,
+                border: '1px solid rgba(0,0,0,0.15)',
+              }}
+            />
+            <span style={{ fontSize: 11 }}>{caption.name}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
 };
 
 export const MapLabel = ({ children }: { children: React.ReactNode }) => {
@@ -105,8 +170,7 @@ const GeoVisMapInner = ({
   variable,
   selectedLocationCode,
   setLocationCode,
-  legendId,
-}: GeoVisMapWrapperProps & { legendId: string | undefined }) => {
+}: GeoVisMapWrapperProps) => {
   const clickInfo = useGeoVisClick();
   const { setView, runtime } = useGeoVis();
   const syncCamera = useSyncCamera();
@@ -251,8 +315,8 @@ const GeoVisMapInner = ({
   }, [selectedLocationCode, region, setView]);
 
   const hoverRenderer = React.useMemo(() => {
-    return renderHoverTooltip(region);
-  }, [region]);
+    return renderHoverTooltip(region, variable);
+  }, [region, variable]);
 
   /**
    * Real-time pan/zoom sync via native MapLibre events.
@@ -350,11 +414,7 @@ const GeoVisMapInner = ({
         <GeoVisHoverTooltip render={hoverRenderer} />
       </Box>
 
-      {legendId && (
-        <div style={{ paddingLeft: '10px' }}>
-          <GeoVisLegend legendId={legendId} />
-        </div>
-      )}
+      <CaptionLegend captions={variable.captions} />
     </div>
   );
 };
@@ -379,8 +439,6 @@ export const GeoVisMapWrapper = ({
     return toGeoVisSpec(region, variable, geoJsonData);
   }, [region, variable, geoJsonData]);
 
-  const legendId = spec.legends?.[0]?.id;
-
   return (
     <GeoVisProvider spec={spec}>
       <GeoVisMapInner
@@ -388,7 +446,6 @@ export const GeoVisMapWrapper = ({
         variable={variable}
         selectedLocationCode={selectedLocationCode}
         setLocationCode={setLocationCode}
-        legendId={legendId}
       />
     </GeoVisProvider>
   );
