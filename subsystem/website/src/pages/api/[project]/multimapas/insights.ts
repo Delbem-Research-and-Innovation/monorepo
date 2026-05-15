@@ -177,7 +177,9 @@ const tryCorrectInsight = async (
     return null;
   }
 
-  const varMatch = responseData.insight.match(/variável ['']([^'']+)['']/i);
+  const varMatch = responseData.insight.match(
+    /variável\s+[\u2018\u2019'"\u201C\u201D]([^\u2018\u2019'"\u201C\u201D\n]+)[\u2018\u2019'"\u201C\u201D]/i
+  );
   const varName = varMatch?.[1];
   const valMatch = responseData.insight.match(/valor (?:de )?(\d+)/i);
   const claimedValue = valMatch?.[1];
