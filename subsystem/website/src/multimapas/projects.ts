@@ -341,6 +341,10 @@ export const getProjectByName = async (
         ...(values.data.values || []),
       ];
 
+      if (!configArr || !headers) {
+        return null;
+      }
+
       const data = restRows.filter((row) => {
         return row[0];
       });
@@ -474,6 +478,8 @@ export const getProjectByName = async (
     ...project,
     ai,
     dictionary,
-    regions,
+    regions: regions.filter((r): r is NonNullable<typeof r> => {
+      return r !== null;
+    }),
   };
 };
