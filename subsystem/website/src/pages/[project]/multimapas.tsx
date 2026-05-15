@@ -122,6 +122,8 @@ const Selector = (
           <Label htmlFor="select-region">Tipo de Regionalização</Label>
           <Select
             id="select-region"
+            inputId="select-region"
+            instanceId="select-region"
             options={tabsOptions}
             value={props.value.tabName}
             onChange={(value) => {
@@ -138,6 +140,8 @@ const Selector = (
           <Label htmlFor="select-location">Selecione a Localidade</Label>
           <Select
             id="select-location"
+            inputId="select-location"
+            instanceId="select-location"
             options={itemsOptions}
             value={props.value.locationCode || ''}
             onChange={(value) => {
@@ -152,6 +156,8 @@ const Selector = (
           <Label htmlFor="map-height">Altura dos Mapas (px)</Label>
           <Select
             id="map-height"
+            inputId="map-height"
+            instanceId="map-height"
             value={props.value.mapHeight}
             isSearchable={false}
             options={[
@@ -272,7 +278,7 @@ const Insights = (
         >
           <Button
             onClick={() => {
-              setWasLocationCodeSet(false);
+              wasLocationCodeSet.current = false;
               refetch();
             }}
             disabled={isFetching}
