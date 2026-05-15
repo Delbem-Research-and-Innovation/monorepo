@@ -20,6 +20,14 @@ import { useSyncCamera } from './SyncCameraContext';
 import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
+ * Falls back to useEffect on the server (where useLayoutEffect is a no-op and
+ * emits an SSR warning) while preserving synchronous DOM-mutation semantics in
+ * the browser. Required for any layout effect that runs during SSG/SSR.
+ */
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
+
+/**
  * Minimal interface for the MapLibre map instance returned by
  * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
  */
@@ -195,7 +203,7 @@ const GeoVisMapInner = ({
    */
   const setLocationCodeRef = React.useRef(setLocationCode);
   const setViewRef = React.useRef(setView);
-  React.useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     setLocationCodeRef.current = setLocationCode;
     setViewRef.current = setView;
   });
