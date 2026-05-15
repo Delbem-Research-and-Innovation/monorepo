@@ -415,6 +415,7 @@ const GeoVisMapInner = ({
           flex: 1,
           minHeight: 0,
           bg: 'display.background.muted.default',
+          isolation: 'isolate',
         }}
       >
         <GeoVisCanvas />
