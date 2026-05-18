@@ -352,7 +352,7 @@ export const getProjectByName = async (
       const mapConfig = {
         geoJsonKey: configArr[0],
         geoJsonUrl: configArr[1],
-        zoom: configArr[2],
+        zoom: Number.isNaN(Number(configArr[2])) ? 8 : Number(configArr[2]),
         center: {
           lat: configArr[3],
           lng: configArr[4],
