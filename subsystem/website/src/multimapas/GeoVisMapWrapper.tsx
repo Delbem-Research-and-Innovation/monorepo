@@ -6,7 +6,7 @@ import {
   useGeoVis,
   useGeoVisClick,
 } from '@ttoss/geovis';
-import { Box, Text } from '@ttoss/ui';
+import { Box, Flex, Text } from '@ttoss/ui';
 import * as React from 'react';
 
 import {
@@ -398,15 +398,19 @@ const GeoVisMapInner = ({
   }, [runtime, syncCamera]);
 
   return (
-    <div
-      style={{
-        display: 'flex',
+    <Flex
+      sx={{
         flexDirection: 'column',
         width: '100%',
         height: '100%',
         position: 'relative',
         paddingBottom: '8px',
         backgroundColor: 'white',
+        // minWidth is enforced at the grid cell level (minmax(min(440px,100%), 1fr))
+        // in the parent Grid. Setting it here caused the grid's 1fr columns to
+        // resolve to 440px each, overflowing the container.
+        minWidth: 0,
+        minHeight: 260,
       }}
     >
       <Box
@@ -424,7 +428,7 @@ const GeoVisMapInner = ({
       </Box>
 
       <CaptionLegend captions={variable.captions} />
-    </div>
+    </Flex>
   );
 };
 
