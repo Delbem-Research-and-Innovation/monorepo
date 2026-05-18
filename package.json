@@ -27,5 +27,13 @@
     "node": "^24.0.0",
     "pnpm": "^11.0.0"
   },
-  "packageManager": "pnpm@10.0.0+sha256.43abf6e720fb7bc53c591b0862605c7d323d0a9d2dd33bcac07b062e13cf4948"
+  "pnpm": {
+    "packageExtensions": {
+      "@ttoss/geovis@*": {
+        "dependencies": {
+          "@ttoss/logger": "^0.8.11"
+        }
+      }
+    }
+  }
 }
