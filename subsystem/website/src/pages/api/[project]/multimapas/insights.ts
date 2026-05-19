@@ -162,6 +162,7 @@ const hasUniquenessClaim = (insight: string): boolean => {
   const lower = insight.toLowerCase();
   return (
     lower.includes('única') ||
+    lower.includes('único') ||
     lower.includes('unico') ||
     lower.includes('apenas')
   );
