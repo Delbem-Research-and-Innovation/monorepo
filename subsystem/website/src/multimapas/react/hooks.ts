@@ -1,7 +1,7 @@
 import type { useGeoVis } from '@ttoss/geovis';
 import * as React from 'react';
 
-import type { useSyncCamera } from './react/SyncCameraContext';
+import type { useSyncCamera } from './SyncCameraContext';
 
 /**
  * Minimal interface for the MapLibre map instance returned by

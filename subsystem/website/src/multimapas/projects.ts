@@ -96,7 +96,7 @@ export type MapConfig = {
   geoJsonKey: string;
   geoJsonUrl: string;
   zoom: number;
-  center: {
+  center?: {
     lat: number;
     lng: number;
   };
@@ -198,6 +198,10 @@ const enrichLocationsWithCentroids = async (
   } catch {
     // Non-fatal: centroid enrichment is a best-effort enhancement.
   }
+};
+
+const isValidNumber = (v: unknown): boolean => {
+  return v !== '' && v != null && !isNaN(Number(v));
 };
 
 // eslint-disable-next-line max-lines-per-function
@@ -349,14 +353,19 @@ export const getProjectByName = async (
         return row[0];
       });
 
+      const rawZoom = configArr[2];
+      const rawCenterLat = configArr[3];
+      const rawCenterLng = configArr[4];
+      const hasValidCenter =
+        isValidNumber(rawCenterLat) && isValidNumber(rawCenterLng);
+
       const mapConfig = {
         geoJsonKey: configArr[0],
         geoJsonUrl: configArr[1],
-        zoom: Number.isNaN(Number(configArr[2])) ? 8 : Number(configArr[2]),
-        center: {
-          lat: configArr[3],
-          lng: configArr[4],
-        },
+        zoom: isValidNumber(rawZoom) ? Number(rawZoom) : 8,
+        ...(hasValidCenter
+          ? { center: { lat: Number(rawCenterLat), lng: Number(rawCenterLng) } }
+          : {}),
       };
 
       const allHeaders = headers as string[];
