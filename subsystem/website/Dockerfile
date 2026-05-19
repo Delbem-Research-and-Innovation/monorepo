@@ -18,7 +18,7 @@ COPY --from=build /website/subsystem/website/package.json ./package.json
 COPY --from=build /website/subsystem/website/.next/ ./.next
 COPY --from=build /website/subsystem/website/.env ./.env
 COPY --from=build /website/subsystem/website/public ./public
-COPY --from=build /website/subsystem/website/simple4decision-f90a46b9bcbc.json ./simple4decision-f90a46b9bcbc.json
+COPY --from=build /website/subsystem/website/simple4decision-ff5d296826c0.json ./simple4decision-ff5d296826c0.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install -r --prod
 
