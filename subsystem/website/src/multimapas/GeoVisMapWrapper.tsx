@@ -16,7 +16,8 @@ import {
   locationForFeatureId,
 } from './GeoVisMapWrapper.helpers';
 import type { Region, Variable } from './projects';
-import { useSyncCamera } from './SyncCameraContext';
+import { useCtrlScrollZoom, usePanZoomSync } from './react/hooks';
+import { useSyncCamera } from './react/SyncCameraContext';
 import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
@@ -26,17 +27,6 @@ import { toGeoVisSpec } from './toGeoVisSpec';
  */
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
-
-/**
- * Minimal interface for the MapLibre map instance returned by
- * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
- */
-type NativeMap = {
-  on: (event: string, handler: () => void) => void;
-  off: (event: string, handler: () => void) => void;
-  getCenter: () => { lng: number; lat: number };
-  getZoom: () => number;
-};
 
 /**
  * Render prop for GeoVisHoverTooltip.
@@ -169,75 +159,6 @@ export const MapLabel = ({ children }: { children: React.ReactNode }) => {
 };
 
 /**
- * Registers MapLibre movestart/move/moveend handlers for real-time pan/zoom
- * sync between sibling maps. Extracted from GeoVisMapInner to stay within
- * the max-lines-per-function limit.
- *
- * See the inline comments in the original effect for the full echo-prevention
- * and gesture-detection rationale.
- */
-type PanZoomRefs = {
-  isSyncingRef: React.MutableRefObject<boolean>;
-  isUserGestureRef: React.MutableRefObject<boolean>;
-  syncedSetViewRef: React.MutableRefObject<
-    ReturnType<typeof useGeoVis>['setView'] | null
-  >;
-  setViewRef: React.MutableRefObject<ReturnType<typeof useGeoVis>['setView']>;
-};
-
-const usePanZoomSync = (
-  runtime: ReturnType<typeof useGeoVis>['runtime'],
-  syncCamera: ReturnType<typeof useSyncCamera>,
-  refs: PanZoomRefs
-) => {
-  React.useEffect(() => {
-    if (!runtime || !syncCamera) {
-      return;
-    }
-    const nativeMap = runtime
-      .getAdapter()
-      .getNativeInstance() as NativeMap | null;
-    if (!nativeMap) {
-      return;
-    }
-    const { isSyncingRef, isUserGestureRef, syncedSetViewRef, setViewRef } =
-      refs;
-    const handleMoveStart = () => {
-      if (isSyncingRef.current) {
-        isSyncingRef.current = false;
-        return;
-      }
-      isUserGestureRef.current = true;
-    };
-    const handleMove = () => {
-      if (!isUserGestureRef.current) {
-        return;
-      }
-      const center: [number, number] = [
-        nativeMap.getCenter().lng,
-        nativeMap.getCenter().lat,
-      ];
-      syncCamera.broadcast(
-        { center, zoom: nativeMap.getZoom(), animate: false },
-        syncedSetViewRef.current ?? setViewRef.current
-      );
-    };
-    const handleMoveEnd = () => {
-      isUserGestureRef.current = false;
-      isSyncingRef.current = false;
-    };
-    nativeMap.on('movestart', handleMoveStart);
-    nativeMap.on('move', handleMove);
-    nativeMap.on('moveend', handleMoveEnd);
-    return () => {
-      nativeMap.off('movestart', handleMoveStart);
-      nativeMap.off('move', handleMove);
-      nativeMap.off('moveend', handleMoveEnd);
-    };
-  }, [runtime, syncCamera, refs]);
-};
-
-/**
  * Inner component rendered inside GeoVisProvider so it can consume geovis
  * hooks (useGeoVisHover, useGeoVisClick, useGeoVis). The outer
  * GeoVisMapWrapper computes the spec and wraps this component in the provider.
@@ -251,6 +172,8 @@ const GeoVisMapInner = ({
   const clickInfo = useGeoVisClick();
   const { setView, runtime } = useGeoVis();
   const syncCamera = useSyncCamera();
+
+  const hintRef = useCtrlScrollZoom(runtime);
 
   const isSyncingRef = React.useRef(false);
   const syncedSetViewRef = React.useRef<typeof setView | null>(null);
@@ -438,6 +361,34 @@ const GeoVisMapInner = ({
         </Box>
         <MapLabel>{variable.name}</MapLabel>
         <GeoVisHoverTooltip render={hoverRenderer} />
+        <Box
+          ref={hintRef}
+          aria-hidden="true"
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            opacity: 0,
+            transition: 'opacity 0.3s',
+          }}
+        >
+          <Box
+            sx={{
+              background: 'rgba(0,0,0,0.65)',
+              color: 'white',
+              borderRadius: 6,
+              padding: '6px 12px',
+              fontSize: 12,
+              userSelect: 'none',
+            }}
+          >
+            Use Ctrl + scroll para ampliar
+          </Box>
+        </Box>
       </Box>
 
       <CaptionLegend captions={variable.captions} />

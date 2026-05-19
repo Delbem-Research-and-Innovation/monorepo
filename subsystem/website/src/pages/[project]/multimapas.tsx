@@ -13,7 +13,7 @@ import {
   listAllProjects,
   type Project,
 } from 'src/multimapas/projects';
-import { SyncCameraProvider } from 'src/multimapas/SyncCameraProvider';
+import { SyncCameraProvider } from 'src/multimapas/react/SyncCameraProvider';
 
 const SELECTORS_BREAKPOINT = '768px';
 const SELECTORS_MQ = `@media screen and (min-width: ${SELECTORS_BREAKPOINT})`;

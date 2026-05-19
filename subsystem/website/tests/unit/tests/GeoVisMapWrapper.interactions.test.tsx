@@ -15,7 +15,7 @@ import type { MapClickInfo } from '@ttoss/geovis';
 import { useGeoVis, useGeoVisClick, useGeoVisHover } from '@ttoss/geovis';
 import type * as React from 'react';
 import { GeoVisMapWrapper } from 'src/multimapas/GeoVisMapWrapper';
-import { SyncCameraProvider } from 'src/multimapas/SyncCameraProvider';
+import { SyncCameraProvider } from 'src/multimapas/react/SyncCameraProvider';
 
 import {
   makeNativeMapMock,

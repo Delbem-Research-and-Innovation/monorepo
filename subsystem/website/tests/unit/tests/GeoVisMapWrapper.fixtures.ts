@@ -50,6 +50,7 @@ export const makeNativeMapMock = (
   const moveStartHandlers: Array<() => void> = [];
   const moveHandlers: Array<() => void> = [];
   const moveEndHandlers: Array<() => void> = [];
+  const container = document.createElement('div');
   const nativeMap = {
     on: jest.fn((event: string, handler: () => void) => {
       if (event === 'movestart') {
@@ -69,6 +70,9 @@ export const makeNativeMapMock = (
     getZoom: () => {
       return zoom;
     },
+    getContainer: () => {
+      return container;
+    },
     flyTo: jest.fn(),
   };
   const runtime = {
@@ -83,6 +87,7 @@ export const makeNativeMapMock = (
   return {
     nativeMap,
     runtime,
+    container,
     moveStartHandlers,
     moveHandlers,
     moveEndHandlers,
