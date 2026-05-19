@@ -62,7 +62,6 @@ type Props = InferGetStaticPropsType<typeof getStaticProps>;
 type SelectorValues = {
   tabName: string;
   locationCode?: string;
-  mapHeight: number;
 };
 
 const Selector = (
@@ -120,9 +119,9 @@ const Selector = (
           flexDirection: 'column',
           justifyContent: 'flex-start',
           width: '100%',
+
           [SELECTORS_MQ]: {
             flexDirection: 'row',
-            justifyContent: 'space-between',
           },
         }}
       >
@@ -132,7 +131,11 @@ const Selector = (
             flex: '0 0 auto',
             width: '100%',
             gap: 1,
-            [SELECTORS_MQ]: { minWidth: '200px', flex: '0 1 250px' },
+            [SELECTORS_MQ]: {
+              minWidth: '200px',
+              flex: '1 1 220px',
+              maxWidth: '300px',
+            },
           }}
         >
           <Label htmlFor="select-region">Tipo de Regionalização</Label>
@@ -146,7 +149,6 @@ const Selector = (
               if (value) {
                 props.onChange({
                   tabName: value as string,
-                  mapHeight: props.value.mapHeight,
                 });
               }
             }}
@@ -159,7 +161,11 @@ const Selector = (
             flex: '0 0 auto',
             width: '100%',
             gap: 1,
-            [SELECTORS_MQ]: { minWidth: '200px', flex: '0 1 250px' },
+            [SELECTORS_MQ]: {
+              minWidth: '220px',
+              flex: '2 1 300px',
+              maxWidth: '300px',
+            },
           }}
         >
           <Label htmlFor="select-location">Selecione a Localidade</Label>
@@ -178,42 +184,6 @@ const Selector = (
             sx={{ width: '100%' }}
           />
         </Stack>
-        <Stack
-          sx={{
-            minWidth: 0,
-            flex: '0 0 auto',
-            width: '100%',
-            gap: 1,
-            [SELECTORS_MQ]: { minWidth: '140px', flex: '0 1 160px' },
-          }}
-        >
-          <Label htmlFor="map-height">Altura dos Mapas (px)</Label>
-          <Select
-            id="map-height"
-            inputId="map-height"
-            instanceId="map-height"
-            value={props.value.mapHeight}
-            isSearchable={false}
-            options={[
-              { value: 1000, label: '1000px' },
-              { value: 1100, label: '1100px' },
-              { value: 1200, label: '1200px' },
-              { value: 1300, label: '1300px' },
-              { value: 1400, label: '1400px' },
-              { value: 1500, label: '1500px' },
-              { value: 1600, label: '1600px' },
-            ]}
-            onChange={(value) => {
-              if (value) {
-                props.onChange({
-                  ...props.value,
-                  mapHeight: Number(value),
-                });
-              }
-            }}
-            sx={{ width: '100%' }}
-          />
-        </Stack>
       </Flex>
     </Stack>
   );
@@ -222,7 +192,6 @@ const Selector = (
 const Page = (props: Props) => {
   const [selectorValues, setSelectorValues] = React.useState<SelectorValues>({
     tabName: props.project.regions[0]?.name ?? '',
-    mapHeight: 1200,
   });
 
   const setLocationCode = React.useCallback((locationCode: string) => {
@@ -277,7 +246,7 @@ const Page = (props: Props) => {
           {isGeoJsonLoading ? (
             <Flex
               sx={{
-                minHeight: `${selectorValues.mapHeight}px`,
+                minHeight: '400px',
                 width: '100%',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -296,7 +265,6 @@ const Page = (props: Props) => {
                 gridTemplateColumns:
                   'repeat(auto-fill, minmax(max(440px, calc(50% - 12px)), 1fr))',
                 gap: '6',
-                minHeight: `${selectorValues.mapHeight}px`,
               }}
             >
               {region.variables.map((variable) => {
