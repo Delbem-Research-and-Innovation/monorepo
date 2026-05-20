@@ -4,6 +4,8 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 # https://github.com/nodejs/corepack
 RUN npm i -g corepack@latest
+RUN corepack enable
+RUN corepack prepare pnpm@11.0.0 --activate
 
 FROM base AS build
 COPY . /website
