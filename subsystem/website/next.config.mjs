@@ -6,6 +6,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   transpilePackages: ['maplibre-gl', '@ttoss/geovis'],
+  // Empty turbopack config tells Next.js 16 that the webpack config below is
+  // intentional (kept for production builds) and suppresses the "webpack
+  // config without turbopack config" startup error.
+  turbopack: {},
   webpack: (config) => {
     // maplibre-gl's UMD dist bundle contains `import.meta.webpackHot` (inserted
     // by webpack during MapLibre's own build). When Next.js webpack parses the

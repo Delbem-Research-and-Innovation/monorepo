@@ -12,13 +12,18 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
 ];
 
-export const getAuth = async () => {
-  const auth = new google.auth.GoogleAuth({
-    scopes: SCOPES,
-    keyFile: path.join(process.cwd(), 'simple4decision-f90a46b9bcbc.json'),
-  });
+let _authClientPromise: Promise<any> | null = null;
 
-  return auth.getClient() as Promise<any>;
+export const getAuth = async () => {
+  if (!_authClientPromise) {
+    const auth = new google.auth.GoogleAuth({
+      scopes: SCOPES,
+      keyFile: path.join(process.cwd(), 'simple4decision-ff5d296826c0.json'),
+    });
+    _authClientPromise = auth.getClient() as Promise<any>;
+  }
+
+  return _authClientPromise;
 };
 
 type Folder = {

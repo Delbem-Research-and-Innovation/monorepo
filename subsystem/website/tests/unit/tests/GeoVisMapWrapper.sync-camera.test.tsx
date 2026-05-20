@@ -8,9 +8,9 @@
 import { act, render } from '@testing-library/react';
 import type { MapClickInfo } from '@ttoss/geovis';
 import { useGeoVis, useGeoVisClick, useGeoVisHover } from '@ttoss/geovis';
-import * as React from 'react';
+import type * as React from 'react';
 import { GeoVisMapWrapper } from 'src/multimapas/GeoVisMapWrapper';
-import { SyncCameraProvider } from 'src/multimapas/SyncCameraProvider';
+import { SyncCameraProvider } from 'src/multimapas/react/SyncCameraProvider';
 
 import { region, variable, variable2 } from './GeoVisMapWrapper.fixtures';
 
@@ -152,6 +152,9 @@ describe('SyncCameraProvider — broadcast between maps', () => {
       getZoom: () => {
         return 12;
       },
+      getContainer: () => {
+        return document.createElement('div');
+      },
     };
     const mockNativeMap2 = {
       on: jest.fn((event: string, handler: () => void) => {
@@ -168,6 +171,9 @@ describe('SyncCameraProvider — broadcast between maps', () => {
       },
       getZoom: () => {
         return 10;
+      },
+      getContainer: () => {
+        return document.createElement('div');
       },
     };
     const mockRuntime1 = {
@@ -254,6 +260,9 @@ describe('SyncCameraProvider — broadcast between maps', () => {
       getZoom: () => {
         return 12;
       },
+      getContainer: () => {
+        return document.createElement('div');
+      },
     };
     const mockNativeMap2 = {
       on: jest.fn((event: string, handler: () => void) => {
@@ -270,6 +279,9 @@ describe('SyncCameraProvider — broadcast between maps', () => {
       },
       getZoom: () => {
         return 10;
+      },
+      getContainer: () => {
+        return document.createElement('div');
       },
     };
     const mockRuntime1 = {

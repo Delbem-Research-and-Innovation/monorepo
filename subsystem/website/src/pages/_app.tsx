@@ -1,6 +1,6 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { AppProps } from 'next/app';
+import type { AppProps } from 'next/app';
 import { RootLayout } from 'src/RootLayout';
 import { RootProviders } from 'src/RootProviders';
 

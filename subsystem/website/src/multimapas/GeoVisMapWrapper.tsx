@@ -1,12 +1,12 @@
-import type { MapHoverInfo } from '@ttoss/geovis';
+import type { GeoJSONObject, MapHoverInfo } from '@ttoss/geovis';
 import {
   GeoVisCanvas,
   GeoVisHoverTooltip,
-  GeoVisLegend,
   GeoVisProvider,
   useGeoVis,
   useGeoVisClick,
 } from '@ttoss/geovis';
+import { Box, Flex, Text } from '@ttoss/ui';
 import * as React from 'react';
 
 import {
@@ -16,29 +16,44 @@ import {
   locationForFeatureId,
 } from './GeoVisMapWrapper.helpers';
 import type { Region, Variable } from './projects';
-import { useSyncCamera } from './SyncCameraContext';
+import { useCtrlScrollZoom, usePanZoomSync } from './react/hooks';
+import { useSyncCamera } from './react/SyncCameraContext';
+import { toGeoVisSpec } from './toGeoVisSpec';
 
 /**
- * Minimal interface for the MapLibre map instance returned by
- * `runtime.getAdapter().getNativeInstance()` (typed as `unknown` in geovis).
+ * Falls back to useEffect on the server (where useLayoutEffect is a no-op and
+ * emits an SSR warning) while preserving synchronous DOM-mutation semantics in
+ * the browser. Required for any layout effect that runs during SSG/SSR.
  */
-type NativeMap = {
-  on: (event: string, handler: () => void) => void;
-  off: (event: string, handler: () => void) => void;
-  getCenter: () => { lng: number; lat: number };
-  getZoom: () => number;
-};
-import { toGeoVisSpec } from './toGeoVisSpec';
+const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
 /**
  * Render prop for GeoVisHoverTooltip.
  * Defined at module scope so the function reference is stable across renders
  * (no new identity per render = no spurious tooltip re-mounts).
+ *
+ * Display value mirrors the production `LocationInfo` logic:
+ * - categorical variables: show `caption.name` (the category label)
+ * - numerical variables:   show `caption.value` (the Jenks threshold that
+ *   identifies the bucket the feature belongs to)
+ *
+ * `caption` is resolved from `variable.polygonsOptions[featureId].caption`,
+ * which is computed at build time by `polygons.ts` and already carried in the
+ * page props — no additional computation needed on the client.
  */
-const renderHoverTooltip = (region: Region) => {
+const renderHoverTooltip = (region: Region, variable: Variable) => {
   const tooltipRenderer = (info: MapHoverInfo): React.ReactNode => {
     const location = locationForFeatureId(info.featureId, region);
     const name = location?.name ?? `#${String(info.featureId)}`;
+
+    const caption = variable.polygonsOptions[String(info.featureId)]?.caption;
+    const displayValue = caption
+      ? caption.dataType === 'categorical'
+        ? caption.name
+        : caption.value
+      : null;
+
     return (
       <div
         style={{
@@ -50,8 +65,12 @@ const renderHoverTooltip = (region: Region) => {
         }}
       >
         <div style={{ fontWeight: 600, marginBottom: 2 }}>{name}</div>
-        {info.value != null && (
-          <div style={{ color: '#ffffff' }}>{String(info.value)}</div>
+        {displayValue != null && (
+          <div style={{ color: '#ffffff' }}>
+            {typeof displayValue === 'number'
+              ? displayValue.toLocaleString('pt-BR')
+              : String(displayValue)}
+          </div>
         )}
       </div>
     );
@@ -64,27 +83,78 @@ export type GeoVisMapWrapperProps = {
   variable: Variable;
   selectedLocationCode?: string;
   setLocationCode: (locationCode: string) => void;
+  /** Pre-fetched GeoJSON data. When provided, passed inline to the spec so
+   * MapLibre does not fetch the GeoJSON URL client-side. */
+  geoJsonData?: GeoJSONObject;
+};
+
+/**
+ * Renders the pre-computed Jenks legend (captions) produced by polygons.ts.
+ * Each caption holds the exact label string and fill colour calculated at
+ * build time, so the legend stays in sync with the choropleth without any
+ * client-side reformatting.
+ */
+const CaptionLegend = ({ captions }: { captions: Variable['captions'] }) => {
+  if (captions.length === 0) {
+    return null;
+  }
+  return (
+    <ul
+      style={{
+        listStyle: 'none',
+        margin: 0,
+        padding: '6px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+      }}
+    >
+      {captions.map((caption) => {
+        return (
+          <li
+            key={caption.name}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 2,
+                background: caption.fillColor,
+                flexShrink: 0,
+                border: '1px solid rgba(0,0,0,0.15)',
+              }}
+            />
+            <span style={{ fontSize: 11 }}>{caption.name}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
 };
 
 export const MapLabel = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div
-      style={{
+    <Text
+      as="div"
+      sx={{
         position: 'absolute',
-        top: 10,
-        left: 10,
-        background: 'rgba(255,255,255,0.88)',
-        borderRadius: 6,
+        top: '10px',
+        left: '10px',
+        bg: 'display.background.primary.default',
+        borderRadius: 'md',
         padding: '4px 10px',
-        fontSize: 12,
-        fontWeight: 600,
-        color: '#374151',
+        // fontSize: '1rem',
+        fontFamily: 'body',
+        fontWeight: 'semibold',
+        color: 'display.text.primary.default',
         zIndex: 1,
         pointerEvents: 'none',
+        opacity: 0.9,
       }}
     >
       {children}
-    </div>
+    </Text>
   );
 };
 
@@ -98,11 +168,12 @@ const GeoVisMapInner = ({
   variable,
   selectedLocationCode,
   setLocationCode,
-  legendId,
-}: GeoVisMapWrapperProps & { legendId: string | undefined }) => {
+}: GeoVisMapWrapperProps) => {
   const clickInfo = useGeoVisClick();
   const { setView, runtime } = useGeoVis();
   const syncCamera = useSyncCamera();
+
+  const hintRef = useCtrlScrollZoom(runtime);
 
   const isSyncingRef = React.useRef(false);
   const syncedSetViewRef = React.useRef<typeof setView | null>(null);
@@ -123,9 +194,11 @@ const GeoVisMapInner = ({
    *   leave isSyncingRef permanently stuck as true.
    */
   const setLocationCodeRef = React.useRef(setLocationCode);
-  setLocationCodeRef.current = setLocationCode;
   const setViewRef = React.useRef(setView);
-  setViewRef.current = setView;
+  useIsomorphicLayoutEffect(() => {
+    setLocationCodeRef.current = setLocationCode;
+    setViewRef.current = setView;
+  });
 
   /**
    * Register a wrapped setView so incoming broadcasts:
@@ -242,101 +315,84 @@ const GeoVisMapInner = ({
   }, [selectedLocationCode, region, setView]);
 
   const hoverRenderer = React.useMemo(() => {
-    return renderHoverTooltip(region);
-  }, [region]);
+    return renderHoverTooltip(region, variable);
+  }, [region, variable]);
 
-  /**
-   * Real-time pan/zoom sync via native MapLibre events.
-   *
-   * `movestart` — distinguishes user gestures from broadcast-triggered moves:
-   *   if isSyncingRef is set (incoming broadcast), clears the flag and exits;
-   *   otherwise marks isUserGestureRef so the `move` handler knows to broadcast.
-   *
-   * `move` — fires every animation frame during drag or flyTo;
-   *   broadcasts current camera to siblings only when the user is the source
-   *   (isUserGestureRef = true). Siblings receive animate:false so they track
-   *   in real-time without their own flyTo delay.
-   *
-   * `moveend` — clears isUserGestureRef when the gesture or animation ends.
-   *   Also clears isSyncingRef as a safety net: if movestart was missed (race
-   *   between effect registration and MapLibre initialisation), the stuck flag
-   *   is guaranteed to be cleared by the time the map stops moving.
-   *
-   * Echo prevention: broadcast → syncedSetView → isSyncingRef=true →
-   *   sibling movestart clears flag → sibling move sees isUserGestureRef=false
-   *   → no re-broadcast.
-   *
-   * setView is accessed via setViewRef (not listed in deps) so that the
-   * handlers are registered exactly once per runtime instance. Registering on
-   * every setView identity change would create a gap between off() and on()
-   * where a movestart could be silently dropped, permanently leaving
-   * isSyncingRef=true and blocking all subsequent pan/zoom broadcasts.
-   */
-  React.useEffect(() => {
-    if (!runtime || !syncCamera) {
-      return;
-    }
-    const nativeMap = runtime
-      .getAdapter()
-      .getNativeInstance() as NativeMap | null;
-    if (!nativeMap) {
-      return;
-    }
-    const handleMoveStart = () => {
-      if (isSyncingRef.current) {
-        isSyncingRef.current = false;
-        return;
-      }
-      isUserGestureRef.current = true;
-    };
-    const handleMove = () => {
-      if (!isUserGestureRef.current) {
-        return;
-      }
-      const center: [number, number] = [
-        nativeMap.getCenter().lng,
-        nativeMap.getCenter().lat,
-      ];
-      syncCamera.broadcast(
-        { center, zoom: nativeMap.getZoom(), animate: false },
-        syncedSetViewRef.current ?? setViewRef.current
-      );
-    };
-    const handleMoveEnd = () => {
-      isUserGestureRef.current = false;
-      isSyncingRef.current = false;
-    };
-    nativeMap.on('movestart', handleMoveStart);
-    nativeMap.on('move', handleMove);
-    nativeMap.on('moveend', handleMoveEnd);
-    return () => {
-      nativeMap.off('movestart', handleMoveStart);
-      nativeMap.off('move', handleMove);
-      nativeMap.off('moveend', handleMoveEnd);
-    };
-  }, [runtime, syncCamera]);
+  usePanZoomSync(runtime, syncCamera, {
+    isSyncingRef,
+    isUserGestureRef,
+    syncedSetViewRef,
+    setViewRef,
+  });
 
   return (
-    <div
-      style={{
-        display: 'flex',
+    <Flex
+      sx={{
         flexDirection: 'column',
         width: '100%',
         height: '100%',
         position: 'relative',
         paddingBottom: '8px',
+        backgroundColor: 'white',
+        // minWidth is enforced at the grid cell level (minmax(min(440px,100%), 1fr))
+        // in the parent Grid. Setting it here caused the grid's 1fr columns to
+        // resolve to 440px each, overflowing the container.
+        minWidth: 0,
+        minHeight: 260,
       }}
     >
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <GeoVisCanvas
-          style={{ position: 'absolute', width: '100%', height: '100%' }}
-        />
+      <Box
+        sx={{
+          position: 'relative',
+          flex: 1,
+          minHeight: 0,
+          bg: 'display.background.muted.default',
+          isolation: 'isolate',
+        }}
+      >
+        <Box
+          sx={{
+            aspectRatio: '16/9',
+            minHeight: '270px',
+            width: '100%',
+          }}
+        >
+          <GeoVisCanvas />
+        </Box>
         <MapLabel>{variable.name}</MapLabel>
         <GeoVisHoverTooltip render={hoverRenderer} />
-      </div>
+        <Box
+          ref={hintRef}
+          aria-hidden="true"
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            opacity: 0,
+            transition: 'opacity 0.3s',
+          }}
+        >
+          <Box
+            sx={{
+              background: 'rgba(0,0,0,0.65)',
+              color: 'white',
+              borderRadius: 6,
+              padding: '6px 12px',
+              fontSize: 12,
+              userSelect: 'none',
+            }}
+          >
+            Use Ctrl + scroll para ampliar
+          </Box>
+        </Box>
+      </Box>
 
-      {legendId && <GeoVisLegend legendId={legendId} />}
-    </div>
+      <CaptionLegend captions={variable.captions} />
+    </Flex>
   );
 };
 
@@ -354,12 +410,11 @@ export const GeoVisMapWrapper = ({
   variable,
   selectedLocationCode,
   setLocationCode,
+  geoJsonData,
 }: GeoVisMapWrapperProps) => {
   const spec = React.useMemo(() => {
-    return toGeoVisSpec(region, variable);
-  }, [region, variable]);
-
-  const legendId = spec.legends?.[0]?.id;
+    return toGeoVisSpec(region, variable, geoJsonData);
+  }, [region, variable, geoJsonData]);
 
   return (
     <GeoVisProvider spec={spec}>
@@ -368,7 +423,6 @@ export const GeoVisMapWrapper = ({
         variable={variable}
         selectedLocationCode={selectedLocationCode}
         setLocationCode={setLocationCode}
-        legendId={legendId}
       />
     </GeoVisProvider>
   );

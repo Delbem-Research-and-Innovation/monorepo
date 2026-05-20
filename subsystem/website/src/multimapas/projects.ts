@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+
 import {
   getAuth,
   listAllFoldersInFolder,
@@ -54,27 +56,31 @@ const asFeatureCollection = (
   return null;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const listAllProjects = async (args: { auth?: any } = {}) => {
-  if (process.env.USE_MOCK === 'true') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-use-before-define
-    const mock = require('./mockProject.json') as Project;
-    return [{ id: mock.id, name: mock.name }];
-  }
-
-  const auth = args.auth || (await getAuth());
-
-  const folders = await listAllFoldersInFolder({
-    auth,
-    folderId,
-  });
-
+const _fetchProjectsList = async (): Promise<
+  Array<{ id: string; name: string }>
+> => {
+  const auth = await getAuth();
+  const folders = await listAllFoldersInFolder({ auth, folderId });
   return folders.map((folder) => {
-    return {
-      id: folder.id,
-      name: folder.name,
-    };
+    return { id: folder.id, name: folder.name };
   });
+};
+
+/**
+ * Caches the Drive folder listing for 1 hour so that repeated calls within
+ * the same ISR regeneration cycle (getStaticPaths + N×getStaticProps) only
+ * hit the Google Drive API once.
+ */
+const getCachedProjectsList = unstable_cache(
+  _fetchProjectsList,
+  ['projects-list'],
+  {
+    revalidate: 3600,
+  }
+);
+
+export const listAllProjects = async () => {
+  return getCachedProjectsList();
 };
 
 export type { Caption, PolygonsOptions };
@@ -90,7 +96,7 @@ export type MapConfig = {
   geoJsonKey: string;
   geoJsonUrl: string;
   zoom: number;
-  center: {
+  center?: {
     lat: number;
     lng: number;
   };
@@ -144,7 +150,24 @@ export type Project = {
  * Failures are silently swallowed — centroid enrichment is best-effort and
  * must never break the build.
  */
-// eslint-disable-next-line complexity
+const buildCentroidMap = (
+  features: GeoJSON.Feature[],
+  geoJsonKey: string
+): Map<string, { lat: number; lng: number }> => {
+  const centroidByKey = new Map<string, { lat: number; lng: number }>();
+  for (const feature of features) {
+    const key = String(feature.properties?.[geoJsonKey] ?? '');
+    if (!key || !feature.geometry) {
+      continue;
+    }
+    const centroid = computeCentroid(feature.geometry);
+    if (centroid) {
+      centroidByKey.set(key, centroid);
+    }
+  }
+  return centroidByKey;
+};
+
 const enrichLocationsWithCentroids = async (
   mapConfig: MapConfig,
   locations: Location[]
@@ -162,17 +185,10 @@ const enrichLocationsWithCentroids = async (
         })();
 
     if (geoJson) {
-      const centroidByKey = new Map<string, { lat: number; lng: number }>();
-      for (const feature of geoJson.features ?? []) {
-        const key = String(feature.properties?.[mapConfig.geoJsonKey] ?? '');
-        if (!key || !feature.geometry) {
-          continue;
-        }
-        const centroid = computeCentroid(feature.geometry);
-        if (centroid) {
-          centroidByKey.set(key, centroid);
-        }
-      }
+      const centroidByKey = buildCentroidMap(
+        geoJson.features ?? [],
+        mapConfig.geoJsonKey
+      );
       for (const loc of locations) {
         if (!loc.center && centroidByKey.has(loc.code)) {
           loc.center = centroidByKey.get(loc.code);
@@ -184,30 +200,17 @@ const enrichLocationsWithCentroids = async (
   }
 };
 
+const isValidNumber = (v: unknown): boolean => {
+  return v !== '' && v != null && !isNaN(Number(v));
+};
+
 // eslint-disable-next-line max-lines-per-function
 export const getProjectByName = async (
   name: string
 ): Promise<Project | undefined> => {
-  if (process.env.USE_MOCK === 'true') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mock = require('./mockProject.json') as Project;
-    if (mock.name !== name) {
-      return undefined;
-    }
-    // Deep clone so that centroid mutation does not bleed into the cached
-    // require() result across multiple getStaticProps calls in the same process.
-    const project = JSON.parse(JSON.stringify(mock)) as Project;
-    await Promise.all(
-      project.regions.map((region) => {
-        return enrichLocationsWithCentroids(region.mapConfig, region.locations);
-      })
-    );
-    return project;
-  }
-
   const auth = await getAuth();
 
-  const projects = await listAllProjects({ auth });
+  const projects = await listAllProjects();
 
   const project = projects.find((folder) => {
     return folder.name === name;
@@ -342,18 +345,27 @@ export const getProjectByName = async (
         ...(values.data.values || []),
       ];
 
+      if (!configArr || !headers) {
+        return null;
+      }
+
       const data = restRows.filter((row) => {
         return row[0];
       });
 
+      const rawZoom = configArr[2];
+      const rawCenterLat = configArr[3];
+      const rawCenterLng = configArr[4];
+      const hasValidCenter =
+        isValidNumber(rawCenterLat) && isValidNumber(rawCenterLng);
+
       const mapConfig = {
         geoJsonKey: configArr[0],
         geoJsonUrl: configArr[1],
-        zoom: configArr[2],
-        center: {
-          lat: configArr[3],
-          lng: configArr[4],
-        },
+        zoom: isValidNumber(rawZoom) ? Number(rawZoom) : 8,
+        ...(hasValidCenter
+          ? { center: { lat: Number(rawCenterLat), lng: Number(rawCenterLng) } }
+          : {}),
       };
 
       const allHeaders = headers as string[];
@@ -475,6 +487,8 @@ export const getProjectByName = async (
     ...project,
     ai,
     dictionary,
-    regions,
+    regions: regions.filter((r): r is NonNullable<typeof r> => {
+      return r !== null;
+    }),
   };
 };
