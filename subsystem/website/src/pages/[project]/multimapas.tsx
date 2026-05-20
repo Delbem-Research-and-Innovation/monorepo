@@ -223,7 +223,7 @@ const Page = (props: Props) => {
       return res.json();
     },
     staleTime: Infinity,
-    enabled: typeof geoJsonUrl === 'string' && geoJsonUrl.startsWith('http'),
+    enabled: typeof geoJsonUrl === 'string',
   });
 
   return (
