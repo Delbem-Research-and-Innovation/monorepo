@@ -56,16 +56,6 @@ export const listAllFoldersInFolder = async ({
     pageToken: nextPageToken,
   });
 
-  if (response.data.nextPageToken) {
-    const nextPageFiles = await listAllFoldersInFolder({
-      auth,
-      folderId,
-      nextPageToken: response.data.nextPageToken,
-    });
-
-    folders.push(...nextPageFiles);
-  }
-
   if (response.data.files) {
     folders.push(
       ...response.data.files.map((file) => {
@@ -75,6 +65,16 @@ export const listAllFoldersInFolder = async ({
         };
       })
     );
+  }
+
+  if (response.data.nextPageToken) {
+    const nextPageFiles = await listAllFoldersInFolder({
+      auth,
+      folderId,
+      nextPageToken: response.data.nextPageToken,
+    });
+
+    folders.push(...nextPageFiles);
   }
 
   return folders;
@@ -112,16 +112,6 @@ export const listAllSheetsInFolder = async ({
     pageToken: nextPageToken,
   });
 
-  if (response.data.nextPageToken) {
-    const nextPageFiles = await listAllSheetsInFolder({
-      auth,
-      folderId,
-      nextPageToken: response.data.nextPageToken,
-    });
-
-    files.push(...nextPageFiles);
-  }
-
   if (response.data.files) {
     files.push(
       ...response.data.files.map((file) => {
@@ -133,6 +123,16 @@ export const listAllSheetsInFolder = async ({
         };
       })
     );
+  }
+
+  if (response.data.nextPageToken) {
+    const nextPageFiles = await listAllSheetsInFolder({
+      auth,
+      folderId,
+      nextPageToken: response.data.nextPageToken,
+    });
+
+    files.push(...nextPageFiles);
   }
 
   return files;
