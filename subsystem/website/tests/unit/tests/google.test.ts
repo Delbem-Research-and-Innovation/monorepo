@@ -45,6 +45,10 @@ describe('listAllFoldersInFolder', () => {
     });
   });
 
+  afterEach(() => {
+    jest.resetModules();
+  });
+
   const auth = {};
   const folderId = 'folder-123';
 
@@ -229,6 +233,10 @@ describe('listAllSheetsInFolder', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       ({ listAllSheetsInFolder } = require('src/google'));
     });
+  });
+
+  afterEach(() => {
+    jest.resetModules();
   });
 
   const auth = {};

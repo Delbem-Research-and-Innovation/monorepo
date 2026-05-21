@@ -103,6 +103,10 @@ describe('getStaticPaths', () => {
 // ---------------------------------------------------------------------------
 
 describe('getStaticProps', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('happy path: returns props.project and revalidate 3600', async () => {
     const project = makeProject();
     (getProjectByName as jest.Mock).mockResolvedValue(project);
@@ -151,6 +155,5 @@ describe('getStaticProps', () => {
     });
 
     expect(result).toEqual({ notFound: true });
-    jest.restoreAllMocks();
   });
 });
