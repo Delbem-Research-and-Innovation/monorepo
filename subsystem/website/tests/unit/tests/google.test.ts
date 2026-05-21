@@ -200,6 +200,15 @@ describe('listAllFoldersInFolder', () => {
     expect(result[0].name).toBe('Page 1');
     expect(result[1].name).toBe('Page 2');
   });
+
+  test('Case 12: rejects with the same error when drive.files.list fails', async () => {
+    const error = new Error('API error');
+    mockFilesList.mockRejectedValue(error);
+
+    await expect(listAllFoldersInFolder({ auth, folderId })).rejects.toBe(
+      error
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -454,5 +463,12 @@ describe('listAllSheetsInFolder', () => {
 
     expect(result[0].name).toBe('Page 1');
     expect(result[1].name).toBe('Page 2');
+  });
+
+  test('Case 12: rejects with the same error when drive.files.list fails', async () => {
+    const error = new Error('API error');
+    mockFilesList.mockRejectedValue(error);
+
+    await expect(listAllSheetsInFolder({ auth, folderId })).rejects.toBe(error);
   });
 });
