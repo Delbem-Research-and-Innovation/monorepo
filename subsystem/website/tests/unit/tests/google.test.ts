@@ -9,11 +9,7 @@
  * Test plan (11 cases per function, 22 total):
  *  Query string (5): folderId in parents, trashed=false, mimeType, supportsAllDrives, includeItemsFromAllDrives
  *  Simple response (3): correct mapping, id-fallback, name-fallback
- *  Pagination (3): second call with pageToken, result aggregation, ordering bug
- *
- * The ordering test (case 11 for each function) MUST FAIL on the current
- * implementation because the code pushes nextPageFiles BEFORE the current
- * page's files, producing ['Page 2', 'Page 1'] instead of ['Page 1', 'Page 2'].
+ *  Pagination (3): second call with pageToken, result aggregation, ordering
  */
 
 // ---------------------------------------------------------------------------
@@ -177,15 +173,13 @@ describe('listAllFoldersInFolder', () => {
   });
 
   /**
-   * Case 11 — BUG: ordering.
+   * Case 11 — ordering.
    *
    * Page 1 items MUST appear before Page 2 items in the final array.
-   * The current implementation pushes nextPageFiles (Page 2) before the
-   * current page's files (Page 1), so the order is reversed.
-   *
-   * This test is expected to FAIL on the unpatched code.
+   * Regression guard for the ordering fix in listAllFoldersInFolder:
+   * current page files are pushed before the recursive next-page call.
    */
-  test('Case 11 [BUG]: Page 1 results come before Page 2 results', async () => {
+  test('Case 11: Page 1 results come before Page 2 results', async () => {
     mockFilesList
       .mockResolvedValueOnce({
         data: {

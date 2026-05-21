@@ -141,6 +141,7 @@ describe('getStaticProps', () => {
   });
 
   test('notFound when getProjectByName throws', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     (getProjectByName as jest.Mock).mockRejectedValue(
       new Error('API unreachable')
     );
@@ -150,5 +151,6 @@ describe('getStaticProps', () => {
     });
 
     expect(result).toEqual({ notFound: true });
+    jest.restoreAllMocks();
   });
 });
