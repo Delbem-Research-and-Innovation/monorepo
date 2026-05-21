@@ -12,7 +12,10 @@
  * No mocks needed - jenksBuckets is called for real.
  */
 
-import { getPolygonsOptionsForNumericalValues } from 'src/multimapas/polygons';
+import {
+  getPolygonsOptionsForCategoricalValues,
+  getPolygonsOptionsForNumericalValues,
+} from 'src/multimapas/polygons';
 
 /**
  * 3-item fixture that activates the Jenks bypass (data.length <= classQty).
@@ -168,5 +171,193 @@ describe('getPolygonsOptionsForNumericalValues: polygon mapping', () => {
       await getPolygonsOptionsForNumericalValues(threeValueData);
 
     expect(captions[1].name).toBe('de 2 até 5');
+  });
+
+  test('ST-3: consecutive integer breakpoints use a single-value label, not a range', async () => {
+    const { captions } = await getPolygonsOptionsForNumericalValues({
+      a: 3,
+      b: 1,
+      c: 2,
+    });
+
+    expect(captions[1].name).toBe('2');
+    expect(captions[2].name).toBe('3');
+  });
+});
+
+/**
+ * Single-caption dictionary. Exercises the n=1 path in getCategoricalColors,
+ * which returns the initial colour directly without interpolation.
+ */
+const dictOne = {
+  status: {
+    variable: 'status',
+    description: 'Status',
+    captions: { '1': 'Ativo' },
+  },
+};
+
+/**
+ * 3-caption dictionary. First and last colours are the fixed endpoints;
+ * the middle colour is derived by linear interpolation.
+ */
+const dictThree = {
+  status: {
+    variable: 'status',
+    description: 'Status',
+    captions: { '1': 'Ativo', '2': 'Inativo', '3': 'Pendente' },
+  },
+};
+
+/**
+ * Dictionary with an empty string caption. Verifies the fallback label
+ * 'Não informado' is applied when a caption value is empty.
+ */
+const dictEmptyCaption = {
+  tipo: {
+    variable: 'tipo',
+    description: 'Tipo',
+    captions: { '1': '' },
+  },
+};
+
+describe('getPolygonsOptionsForCategoricalValues: colour generation', () => {
+  test('HP-1: n=1 returns only the initial colour, skipping interpolation', async () => {
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1 },
+      dictionary: dictOne,
+      variable: 'status',
+    });
+
+    expect(captions).toHaveLength(1);
+    expect(captions[0].fillColor).toBe('#66FFE6');
+  });
+
+  test('HP-2: n=2 produces exactly the start and end colours with no interpolated values between them', async () => {
+    const dictTwo = {
+      status: {
+        variable: 'status',
+        description: 'Status',
+        captions: { '1': 'Ativo', '2': 'Inativo' },
+      },
+    };
+
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1, b: 2 },
+      dictionary: dictTwo,
+      variable: 'status',
+    });
+
+    expect(captions).toHaveLength(2);
+    expect(captions[0].fillColor).toBe('#66FFE6');
+    expect(captions[1].fillColor).toBe('#002040');
+  });
+
+  test('HP-3: n>=3 interpolates a valid hex colour between the fixed start and end endpoints', async () => {
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1, b: 2, c: 3 },
+      dictionary: dictThree,
+      variable: 'status',
+    });
+
+    expect(captions).toHaveLength(3);
+    expect(captions[0].fillColor).toBe('#66FFE6');
+    expect(captions[2].fillColor).toBe('#002040');
+
+    // interpolated colour must be a valid 7-char hex
+    expect(captions[1].fillColor).toMatch(/^#[0-9a-f]{6}$/i);
+    // and must differ from both endpoints
+    expect(captions[1].fillColor).not.toBe('#66FFE6');
+    expect(captions[1].fillColor).not.toBe('#002040');
+  });
+
+  test('EC-1: colour count always matches the number of entries in the captions dictionary', async () => {
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1, b: 2, c: 3 },
+      dictionary: dictThree,
+      variable: 'status',
+    });
+
+    const uniqueColors = new Set(
+      captions.map((c) => {
+        return c.fillColor;
+      })
+    );
+
+    expect(uniqueColors.size).toBe(3);
+  });
+});
+
+describe('getPolygonsOptionsForCategoricalValues: polygon mapping', () => {
+  test('HP-1: each polygon entry maps to the correct caption from the dictionary, including fill colour and dataType', async () => {
+    const { captions, polygonsOptions } =
+      await getPolygonsOptionsForCategoricalValues({
+        values: { a: 1, b: 2, c: 3 },
+        dictionary: dictThree,
+        variable: 'status',
+      });
+
+    expect(polygonsOptions['a'].caption.name).toBe('Ativo');
+    expect(polygonsOptions['b'].caption.name).toBe('Inativo');
+    expect(polygonsOptions['c'].caption.name).toBe('Pendente');
+
+    expect(polygonsOptions['a'].fillColor).toBe(captions[0].fillColor);
+    expect(polygonsOptions['b'].fillColor).toBe(captions[1].fillColor);
+
+    expect(polygonsOptions['a'].caption.dataType).toBe('categorical');
+  });
+
+  test('HP-2: values are stored as Number, coercing string inputs to numeric type', async () => {
+    const { polygonsOptions } = await getPolygonsOptionsForCategoricalValues({
+      values: { x: '2' },
+      dictionary: dictThree,
+      variable: 'status',
+    });
+
+    expect(polygonsOptions['x'].value).toBe(2);
+  });
+
+  test('EC-1: value absent from the dictionary falls back to transparent fill and "Não informado" label', async () => {
+    const { polygonsOptions } = await getPolygonsOptionsForCategoricalValues({
+      values: { z: 99 },
+      dictionary: dictThree,
+      variable: 'status',
+    });
+
+    expect(polygonsOptions['z'].fillColor).toBe('transparent');
+    expect(polygonsOptions['z'].caption.name).toBe('Não informado');
+  });
+
+  test('EC-2: empty string caption in the dictionary applies the "Não informado" fallback label', async () => {
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1 },
+      dictionary: dictEmptyCaption,
+      variable: 'tipo',
+    });
+
+    expect(captions[0].name).toBe('Não informado');
+  });
+
+  test('EC-3: empty values map produces empty polygonsOptions while captions are still built from the dictionary', async () => {
+    const { captions, polygonsOptions } =
+      await getPolygonsOptionsForCategoricalValues({
+        values: {},
+        dictionary: dictOne,
+        variable: 'status',
+      });
+
+    expect(polygonsOptions).toEqual({});
+    expect(captions).toHaveLength(1); // captions come from the dictionary, not from the values map
+  });
+
+  test('ST-1: dictionary keys are coerced to Number so value comparisons work regardless of key type', async () => {
+    const { captions } = await getPolygonsOptionsForCategoricalValues({
+      values: { a: 1 },
+      dictionary: dictOne,
+      variable: 'status',
+    });
+
+    expect(captions[0].value).toBe(1);
+    expect(typeof captions[0].value).toBe('number');
   });
 });

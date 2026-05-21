@@ -45,7 +45,7 @@ const interpolateColor = (
 // Generate gradient colors
 // const baseColors = ['#00D4AA', '#00B89F', '#0093B2', '#0067C5', '#00497A'];
 
-const getCategoricalColors = (n: number = 1) => {
+const getCategoricalColors = (n: number) => {
   const initialColor = '#66FFE6';
   const finalColor = '#002040';
 
@@ -182,7 +182,7 @@ export const getPolygonsOptionsForNumericalValues = async (
       };
 
       acc[key] = {
-        fillColor: caption.fillColor || 'transparent',
+        fillColor: caption.fillColor,
         value: valueAsNumber,
         caption,
       };
@@ -247,7 +247,7 @@ export const getPolygonsOptionsForCategoricalValues = async ({
       };
 
       acc[key] = {
-        fillColor: caption?.fillColor || 'transparent',
+        fillColor: caption.fillColor,
         value: noDecimalValue,
         caption,
       };
