@@ -91,7 +91,7 @@ describe('getPolygonsOptionsForNumericalValues: getFrequencyTable', () => {
     const captionValues = captions.map((c) => {
       return c.value;
     });
-    expect(captionValues).not.toContain(NaN);
+    expect(captionValues.some(Number.isNaN)).toBe(false);
     expect(captionValues).toContain(10);
     expect(captionValues).toContain(20);
   });
