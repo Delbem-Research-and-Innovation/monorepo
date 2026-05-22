@@ -22,7 +22,7 @@
  *   [4] data row  = ['A001', 'Location A']
  */
 
-import { sheets } from 'src/google';
+import { listAllSheetsInFolder, sheets } from 'src/google';
 import { getProjectByName } from 'src/multimapas/projects';
 
 // ---------------------------------------------------------------------------
@@ -348,5 +348,262 @@ describe('getProjectByName — URL GeoJSON centroid enrichment', () => {
 
     const location = project!.regions[0].locations[0];
     expect(location.center).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P4b — AI sheet, Dictionary, center_lat/center_lng (10 cases)
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: build a sheets.spreadsheets.values.get response for the 'Region1'
+ * tab with optional center_lat/center_lng columns in the header row.
+ *
+ * @param headers - row 3 of the sheet (index 3 in the values array)
+ * @param dataRow - row 4 of the sheet (index 4 in the values array)
+ */
+const makeRegionSheetValues = (headers: unknown[], dataRow: unknown[]) => {
+  return {
+    data: {
+      values: [
+        [],
+        ['cd_key', 'https://example.com/geo.geojson', 10],
+        [],
+        headers,
+        dataRow,
+      ],
+    },
+  };
+};
+
+describe('getProjectByName — AI sheet', () => {
+  // Silence fetch for all tests in this describe (geoJsonUrl is a URL,
+  // but we don't care about centroids here — rejecting fetch is fine).
+  beforeEach(() => {
+    fetchMock.mockRejectedValue(new Error('fetch suppressed'));
+    (sheets.spreadsheets.get as jest.Mock).mockResolvedValue({
+      data: { sheets: [{ properties: { title: 'Region1' } }] },
+    });
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Case 1 — AI sheet present with all four values
+  test('Case 1: AI sheet populated → project.ai contains model, temperature, instructions, input', async () => {
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValueOnce([
+      { id: 'ai-sheet-1', name: 'AI' },
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+
+    // AI sheet values: row[0][1]=model, row[1][1]=temp, row[2][1]=instructions, row[3][1]=input
+    (sheets.spreadsheets.values.get as jest.Mock)
+      .mockResolvedValueOnce({
+        data: {
+          values: [
+            ['model', 'gpt-4'],
+            ['temperature', '0.7'],
+            ['instructions', 'Be concise.'],
+            ['input', 'Summarise the data.'],
+          ],
+        },
+      })
+      .mockResolvedValue(
+        makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+      );
+
+    const project = await getProjectByName('TestProject');
+
+    expect(project!.ai).not.toBeNull();
+    expect(project!.ai!.model).toBe('gpt-4');
+    expect(project!.ai!.temperature).toBe(0.7);
+    expect(project!.ai!.instructions).toBe('Be concise.');
+    expect(project!.ai!.input).toBe('Summarise the data.');
+  });
+
+  // Case 2 — No AI sheet
+  test('Case 2: AI sheet absent → project.ai is null', async () => {
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValueOnce([
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+
+    const project = await getProjectByName('TestProject');
+
+    expect(project!.ai).toBeNull();
+  });
+
+  // Case 3 — AI sheet present but values is undefined
+  test('Case 3: AI sheet present but values = undefined → project.ai is null', async () => {
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValueOnce([
+      { id: 'ai-sheet-1', name: 'AI' },
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+
+    (sheets.spreadsheets.values.get as jest.Mock)
+      .mockResolvedValueOnce({ data: { values: undefined } })
+      .mockResolvedValue(
+        makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+      );
+
+    const project = await getProjectByName('TestProject');
+
+    expect(project!.ai).toBeNull();
+  });
+});
+
+describe('getProjectByName — Dictionary sheet', () => {
+  beforeEach(() => {
+    fetchMock.mockRejectedValue(new Error('fetch suppressed'));
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValue([
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+    (sheets.spreadsheets.get as jest.Mock).mockResolvedValue({
+      data: { sheets: [{ properties: { title: 'Region1' } }] },
+    });
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Case 4 — Dictionary with 2 variables
+  test('Case 4: Dictionary sheet with 2 variables → project.dictionary populated with both', async () => {
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValueOnce([
+      { id: 'dict-1', name: 'Dicionário' },
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+
+    // Dictionary rows: variable | description | code | caption
+    (sheets.spreadsheets.values.get as jest.Mock)
+      .mockResolvedValueOnce({
+        data: {
+          values: [
+            ['populacao', 'Population', '1', 'Low'],
+            ['', '', '2', 'High'],
+            ['renda', 'Income', 'A', 'Poor'],
+            ['', '', 'B', 'Rich'],
+          ],
+        },
+      })
+      .mockResolvedValue(
+        makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+      );
+
+    const project = await getProjectByName('TestProject');
+
+    expect(project!.dictionary).not.toBeNull();
+    expect(project!.dictionary!['populacao']).toBeDefined();
+    expect(project!.dictionary!['populacao'].captions['1']).toBe('Low');
+    expect(project!.dictionary!['populacao'].captions['2']).toBe('High');
+    expect(project!.dictionary!['renda']).toBeDefined();
+    expect(project!.dictionary!['renda'].captions['A']).toBe('Poor');
+  });
+
+  // Case 5 — No Dictionary sheet
+  test('Case 5: Dictionary sheet absent → project.dictionary is null', async () => {
+    const project = await getProjectByName('TestProject');
+
+    expect(project!.dictionary).toBeNull();
+  });
+});
+
+describe('getProjectByName — center_lat / center_lng columns', () => {
+  beforeEach(() => {
+    // Use a rejecting fetch so centroid enrichment via URL always fails silently.
+    fetchMock.mockRejectedValue(new Error('fetch suppressed'));
+    (listAllSheetsInFolder as jest.Mock).mockResolvedValue([
+      { id: 'dados-1', name: 'Dados' },
+    ]);
+    (sheets.spreadsheets.get as jest.Mock).mockResolvedValue({
+      data: { sheets: [{ properties: { title: 'Region1' } }] },
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Case 6 — center_lat and center_lng columns present with valid values
+  test('Case 6: valid center_lat/center_lng in headers → location.center populated from columns', async () => {
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(
+        ['code', 'name', 'center_lat', 'center_lng'],
+        ['A001', 'Location A', -23.5, -46.6]
+      )
+    );
+
+    const project = await getProjectByName('TestProject');
+    const location = project!.regions[0].locations[0];
+
+    expect(location.center).toBeDefined();
+    expect(location.center!.lat).toBeCloseTo(-23.5, 5);
+    expect(location.center!.lng).toBeCloseTo(-46.6, 5);
+  });
+
+  // Case 7 — center_lat/center_lng columns present but values are empty strings
+  test('Case 7: center_lat/center_lng columns present but empty values → location.center undefined', async () => {
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(
+        ['code', 'name', 'center_lat', 'center_lng'],
+        ['A001', 'Location A', '', '']
+      )
+    );
+
+    const project = await getProjectByName('TestProject');
+    const location = project!.regions[0].locations[0];
+
+    expect(location.center).toBeUndefined();
+  });
+
+  // Case 8 — center_lat and center_lng absent from headers
+  test('Case 8: center_lat/center_lng absent from headers → location.center not set from columns', async () => {
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(['code', 'name'], ['A001', 'Location A'])
+    );
+
+    const project = await getProjectByName('TestProject');
+    const location = project!.regions[0].locations[0];
+
+    // No center from columns and fetch is rejected, so center stays undefined.
+    expect(location.center).toBeUndefined();
+  });
+
+  // Case 9 — Only center_lat is valid; center_lng is empty → no center from columns
+  test('Case 9: only center_lat valid, center_lng empty → location.center undefined', async () => {
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(
+        ['code', 'name', 'center_lat', 'center_lng'],
+        ['A001', 'Location A', -23.5, '']
+      )
+    );
+
+    const project = await getProjectByName('TestProject');
+    const location = project!.regions[0].locations[0];
+
+    expect(location.center).toBeUndefined();
+  });
+
+  // Case 10 — center_lat/center_lng with value 0 (zero is a valid coordinate)
+  test('Case 10: center_lat=0 and center_lng=0 → location.center populated (zero is valid)', async () => {
+    (sheets.spreadsheets.values.get as jest.Mock).mockResolvedValue(
+      makeRegionSheetValues(
+        ['code', 'name', 'center_lat', 'center_lng'],
+        ['A001', 'Location A', 0, 0]
+      )
+    );
+
+    const project = await getProjectByName('TestProject');
+    const location = project!.regions[0].locations[0];
+
+    expect(location.center).toBeDefined();
+    expect(location.center!.lat).toBe(0);
+    expect(location.center!.lng).toBe(0);
   });
 });

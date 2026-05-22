@@ -16,7 +16,7 @@ import {
 
 const folderId = '1m3zw1BGQCoKHYHhJzD97fVM0xX0-d0Do';
 
-const asFeatureCollection = (
+export const asFeatureCollection = (
   value: unknown
 ): GeoJSON.FeatureCollection | null => {
   if (!value) {
@@ -200,7 +200,7 @@ const enrichLocationsWithCentroids = async (
   }
 };
 
-const isValidNumber = (v: unknown): boolean => {
+export const isValidNumber = (v: unknown): boolean => {
   return v !== '' && v != null && !isNaN(Number(v));
 };
 
