@@ -13,6 +13,86 @@
  */
 
 // ---------------------------------------------------------------------------
+// getAuth — singleton
+// ---------------------------------------------------------------------------
+
+/**
+ * P3 — 3 cases: GoogleAuth instantiated 1× on first call, NOT on second call
+ * (same promise reused), and both calls resolve to the value from getClient().
+ *
+ * Each test uses jest.isolateModules so that the module-level
+ * _authClientPromise starts as null, giving us a clean singleton state.
+ */
+
+describe('getAuth — singleton', () => {
+  const mockGetClient = jest.fn();
+  const mockGoogleAuth = jest.fn();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let getAuth: () => Promise<any>;
+
+  beforeEach(() => {
+    mockGetClient.mockReset();
+    mockGoogleAuth.mockReset().mockImplementation(() => {
+      return { getClient: mockGetClient };
+    });
+
+    jest.isolateModules(() => {
+      jest.doMock('googleapis', () => {
+        return {
+          google: {
+            drive: () => {
+              return { files: { list: jest.fn() } };
+            },
+            sheets: () => {
+              return {
+                spreadsheets: { get: jest.fn(), values: { get: jest.fn() } },
+              };
+            },
+            auth: { GoogleAuth: mockGoogleAuth },
+          },
+        };
+      });
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ getAuth } = require('src/google'));
+    });
+  });
+
+  afterEach(() => {
+    jest.resetModules();
+  });
+
+  test('Case 1 (P3): GoogleAuth instantiated exactly once on first call', async () => {
+    mockGetClient.mockResolvedValue({});
+
+    await getAuth();
+
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+  });
+
+  test('Case 2 (P3): GoogleAuth NOT instantiated on second call — singleton cache reused', async () => {
+    mockGetClient.mockResolvedValue({});
+
+    await getAuth();
+    await getAuth();
+
+    expect(mockGoogleAuth).toHaveBeenCalledTimes(1);
+    expect(mockGetClient).toHaveBeenCalledTimes(1);
+  });
+
+  test('Case 3 (P3): both calls resolve to the same value returned by getClient()', async () => {
+    const fakeClient = { type: 'google-auth-client' };
+    mockGetClient.mockResolvedValue(fakeClient);
+
+    const result1 = await getAuth();
+    const result2 = await getAuth();
+
+    expect(result1).toBe(fakeClient);
+    expect(result2).toBe(fakeClient);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // listAllFoldersInFolder
 // ---------------------------------------------------------------------------
 
