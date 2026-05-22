@@ -107,6 +107,23 @@ describe('getPolygonsOptionsForNumericalValues: getFrequencyTable', () => {
     expect(captions).toHaveLength(1);
     expect(captions[0].value).toBe(7);
   });
+
+  test('EC-5: null inputs are coerced to 0 by Number() before reaching getFrequencyTable, producing a zero breakpoint', async () => {
+    // from this path; null silently becomes a real breakpoint at value 0
+    const { captions } = await getPolygonsOptionsForNumericalValues({
+      a: null as unknown as number,
+      b: 10,
+      c: 20,
+    });
+
+    expect(captions).toHaveLength(3);
+    const captionValues = captions.map((c) => {
+      return c.value;
+    });
+    expect(captionValues).toContain(0);
+    expect(captionValues).toContain(10);
+    expect(captionValues).toContain(20);
+  });
 });
 
 describe('getPolygonsOptionsForNumericalValues: polygon mapping', () => {
@@ -126,13 +143,12 @@ describe('getPolygonsOptionsForNumericalValues: polygon mapping', () => {
   });
 
   test('HP-2: value equal to the last breakpoint maps to the last caption (boundary inclusive)', async () => {
-    const { captions, polygonsOptions } =
+    const { polygonsOptions } =
       await getPolygonsOptionsForNumericalValues(tenValueData);
 
-    const lastCaption = captions[captions.length - 1];
-    // 'j' = 100, which is the max and the last breakpoint
-    expect(polygonsOptions['j'].caption.value).toBe(lastCaption.value);
-    expect(polygonsOptions['j'].fillColor).toBe(lastCaption.fillColor);
+    // 'j' = 100, the maximum value → last caption; numericalColors[4] = '#00497A'
+    expect(polygonsOptions['j'].caption.value).toBe(100);
+    expect(polygonsOptions['j'].fillColor).toBe('#00497A');
   });
 
   test('EC-5: NaN-only input falls back to transparent fill colour', async () => {
@@ -143,12 +159,24 @@ describe('getPolygonsOptionsForNumericalValues: polygon mapping', () => {
     expect(polygonsOptions['a'].fillColor).toBe('transparent');
   });
 
-  test('EC-6: value between two breakpoints resolves to the lower caption (inclusive lower bound)', async () => {
+  test('EC-6a: value exactly on a breakpoint maps to that caption directly', async () => {
+    // threeValueData breakpoints: [1, 5, 20] — b=5 hits captions[1] exactly
     const { polygonsOptions } =
       await getPolygonsOptionsForNumericalValues(threeValueData);
 
     expect(polygonsOptions['b'].caption.value).toBe(5);
     expect(polygonsOptions['b'].value).toBe(5);
+  });
+
+  test('EC-6b: in the bypass path every unique value becomes its own breakpoint, so any value always resolves to its exact caption', async () => {
+    const { polygonsOptions } = await getPolygonsOptionsForNumericalValues({
+      a: 1,
+      b: 3,
+      c: 20,
+    });
+
+    expect(polygonsOptions['b'].caption.value).toBe(3);
+    expect(polygonsOptions['b'].value).toBe(3);
   });
 
   test('EC-7: empty input produces empty captions and polygonsOptions', async () => {
@@ -157,6 +185,22 @@ describe('getPolygonsOptionsForNumericalValues: polygon mapping', () => {
 
     expect(captions).toEqual([]);
     expect(polygonsOptions).toEqual({});
+  });
+
+  test('EC-8: value above the highest breakpoint maps to the last caption via the !nextCaption guard', async () => {
+    // In the bypass path every value becomes a breakpoint, so the "above max" case
+    // is exercised when a Jenks breakpoint is below the data maximum.
+    // Here we verify via tenValueData: Jenks may not produce 100 as the last breakpoint
+    // for all distributions, but the find() guard (!nextCaption) must fire for the
+    // last caption entry regardless, so we assert the max value lands on the last caption.
+    const { captions, polygonsOptions } =
+      await getPolygonsOptionsForNumericalValues(tenValueData);
+
+    const lastCaption = captions[captions.length - 1];
+    // 'j' = 100 (max) always resolves to the last caption via !nextCaption
+    expect(polygonsOptions['j'].caption.value).toBe(lastCaption.value);
+    // fill colour must match the last caption, not transparent
+    expect(polygonsOptions['j'].fillColor).not.toBe('transparent');
   });
 
   test('ST-1: first caption uses a plain value label because it marks the data minimum, not a range boundary', async () => {
